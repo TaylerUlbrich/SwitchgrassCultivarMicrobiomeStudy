@@ -1,12 +1,12 @@
 ---
 title: "SGcultivar sequencing pipeline"
-author: "Tayler Ulbrich"
+author: "Tayler Ulbrich & Lukas Bell-Dereske
 date: "7/6/2020"
 output: html_document
 ---
 
 # Bacterial Sequencing Pipeline (primers 515f/806r)
-" February 1, 2018 by Lukas Bell-Dereske and Tayler Ulbrich"
+
 ## 1) Check read quality & merge reads for all runs 
 ```{r warning=TRUE}
 # Soil samples (n = 144) were in run 3, runs 1 and 2 have root samples (n = 48)
@@ -441,9 +441,7 @@ otu
 ```
 
 # Fungal Sequencing Pipeline (primers ITS1-F/ITS2)
-  # SGvarietyRhizo samples and RL samples
-  # info about run in document: C:\Users\Owner\Documents\01_Grad School\06_Sequencing\SGvarietyRhizo\MiSeqRuns_16S_ITSinfo.txt
-  # https://github.com/GLBRC-TeamMicrobiome/ITS-amplicon-pipeline/blob/master/ITS-amplicon-pipeline.md
+	*https://github.com/GLBRC-TeamMicrobiome/ITS-amplicon-pipeline/blob/master/ITS-amplicon-pipeline.md*
 
 ## 1) Check read quality & merge reads 
 ```{r}
