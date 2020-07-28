@@ -224,7 +224,7 @@ adonis(rhizo.rfy.wunifrac~sampledata_rhizo.rfy$Date_Julian + sampledata_rhizo.rf
 #sampledata_rhizo.rfy$Date_Julian   1   0.09919 0.099195 15.4432 0.09515  0.001 ***
 #sampledata_rhizo.rfy$Variety      10   0.13396 0.013396  2.0856 0.12850  0.001 ***
 #Residuals                        126   0.80933 0.006423         0.77634           
-#Total                            137   1.04248                  1.00000                                  42   2.02617                  1.00000    
+#Total                            137   1.04248                  1.00000                                  
 
 #VST 
 set.seed(2)
@@ -233,7 +233,7 @@ adonis(rhizo.vst.wunifrac~sampledata_rhizo.rfy$Date_Julian + sampledata_rhizo.rf
 #sampledata_rhizo.rfy$Date_Julian   1 0.00008258 8.2584e-05 15.2577 0.09358  0.001 ***
 #sampledata_rhizo.rfy$Variety      10 0.00011797 1.1797e-05  2.1795 0.13367  0.001 ***
 #Residuals                        126 0.00068199 5.4130e-06         0.77276           
-#Total                            137 0.00088254                    1.00000                                42  0.056671                   #1.00000     
+#Total                            137 0.00088254 1.00000      
 
 
 #################
@@ -316,7 +316,7 @@ adonis(fungi.vst.bray~sampledata_fungi.rfy$Date_Julian + sampledata_fungi.rfy$Va
 # Summarize dominant taxonomic groups 
 *what are the dominant phyla in each microbiome?*
 ```{r}
-# Create summary data on the dominate phylum, etc.https://github.com/joey711/phyloseq/issues/418
+# Create summary data for taxonomic groups (https://github.com/joey711/phyloseq/issues/418)
 
 
 library("phyloseq")
@@ -687,7 +687,7 @@ library('ggpubr')
                       common.legend = TRUE, legend = "none",
             align = "hv")
  
- 
+ # editted metafile in powerpoint 
 
 ```
 ## Figure 2A: Ordination - RhizoEndo 
@@ -1238,65 +1238,35 @@ res = resid(fungi_shannon)
 shapiro.test(res) 
 # shannon p <0.001 
 # log(shannon) p <0.001 - can't normalize
-# try to remove the low outlier at 1.96 to see if normality improves 
-fungi.rfy_diversity$Shannon_OutlierRmv <-  fungi.rfy_diversity$Shannon
-fungi.rfy_diversity$Shannon_OutlierRmv[fungi.rfy_diversity$Shannon_OutlierRmv < 2] <- NA
-# data still not normal 
 
 
 # 2) homoegeneity of variances
 bartlett.test(log(Shannon) ~ Variety , data = fungi.rfy_diversity) 
-# shannon p <0.001
-# log(shannon), p <0.001
 
 # check if anova is sig. with mixed effects despite normality
 fungi_shannon = lmer(Shannon ~ Variety + (1|Block/Variety), data = fungi.rfy_diversity)
 
 fungi_shannon_SMC = lmer(Shannon ~ Variety + SMC_perc_GravWaterCont_OutlierRmv +(1|Block/Variety), data = fungi.rfy_diversity)
 
-fungi_shannon_date <- lmer(Shannon ~ Date_Julian + Variety + (1|Block/Variety), data =   fungi.rfy_diversity)
-# rank deficient modle 
 
-AIC(fungi_shannon,fungi_shannon_date)
-  #      df      AIC
-#fungi_shannon      15 216.8383
-#fungi_shannon_date 15 220.7301
+AIC(fungi_shannon,fungi_shannon_SMC)
+
 
 # ANOVA without SMC as covariate
-Anova(fungi_shannon, type = "III")
-#Response: Shannon
-#              Chisq Df Pr(>Chisq)    
-#(Intercept) 909.310  1     <2e-16 ***
-#Variety       8.081 11      0.706   
+Anova(fungi_shannon_SMC, type = "III")
 
-### Non-parametric stats for Shannon diversity (don't know how to add Block)
+### Non-parametric stats for Shannon diversity (cannot add Block or SMC as covariate)
 # Note this compares medians/not means so can be affected by unequal distributions 
 #http://influentialpoints.com/Training/Kruskal-Wallis_ANOVA_use_and_misuse.htm
 fungi.shannon_Kruskal <- kruskal.test(Shannon ~ Variety , data = fungi.rfy_diversity)
 fungi.shannon_Kruskal
-#Kruskal-Wallis chi-squared = 7.2202, df = 11, p-value = 0.781
-#use Dunn test for Kruskal post-hoc 
-library(FSA)
-fungi.shannon_dunn <- dunnTest(Shannon ~ Variety, data = fungi.rfy_diversity, method= "bh") # bh is the same as fdr 
-fungi.shannon_dunn
-# no sig.
-
 
 ### Non-parametric t-test (Wilcoxon Signed-ranked test)
-
 wilcox.test(Shannon ~ Ecotype, data = fungi.rfy_diversity) 
-#Wilcoxon rank sum test with continuity correction
-#data:  Shannon by Ecotype
-#W = 2177, p-value = 0.6163
 
-
-
-#> model = lmer(Shannon ~ Ecotype + (1|Block/Plot), data = fungi.rfy_diversity)
-#> emmeans(model,pairwise~Ecotype, adjust = "fdr")
-#$emmeans
- #Ecotype emmean     SE   df lower.CL upper.CL
- #Lowland   4.42 0.0799 9.58     4.24     4.60
- #Upland    4.47 0.0657 4.57     4.30     4.65
+# check if results are similar when block is in model with parametric test
+model = lmer(Shannon ~ Ecotype + (1|Block/Plot), data = fungi.rfy_diversity)
+emmeans(model,pairwise~Ecotype, adjust = "fdr")
 
 ```
 ### Observed richness - Fungal Soil 
@@ -1310,34 +1280,23 @@ fungi_rich = lmer(Observed ~ Variety + (1|Block/Variety), data = fungi.rfy_diver
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = resid(fungi_rich) 
 shapiro.test(res) 
-# observed p = 0.27
+
 
 # 2) homoegeneity of variances
 bartlett.test(Observed ~ Variety , data = fungi.rfy_diversity)
-# observed p =0.46 - equal variance
 
 # Check if the model is stronger with SMC as covariate 
 Obs_Variety_model <- lmer(Observed ~ Variety +(1|Block/Variety), data = fungi.rfy_diversity)
-#boundary (singular) fit: see ?isSingular
-Obs_Variety_model
+
 
 # model with SMC as covariate
 Obs_Variety_model_SMC = lmer(Observed ~ Variety + SMC_perc_GravWaterCont_OutlierRmv + (1|Block/Variety), data = fungi.rfy_diversity)
 
-# check AIC values
+# check AIC values 
 AIC(Obs_Variety_model,Obs_Variety_model_SMC)
-#df      AIC
-#Obs_Variety_model     15 1380.103
-#Obs_Variety_model_SMC 16 1355.605 # YES 
+	# lower with SMC 
 
 anova(Obs_Variety_model_SMC, type = "III")
-
-#Type III Analysis of Variance Table with Satterthwaite's method
-#                                  Sum Sq Mean Sq NumDF  DenDF F value Pr(>F)
-#Variety                         15198.2  1381.7    11 34.009  0.6289 0.7914
-#SMC_perc_GravWaterCont_OutlierRmv  3082.3  3082.3     1 45.079  1.4030 0.2424
-
-
 
 ########################################
 # By Ecotype? 
@@ -1354,32 +1313,13 @@ Observed_EcoBl_model_SMC <- lmer(Observed ~ Ecotype + SMC_perc_GravWaterCont_Out
 
 # check AIC values
 AIC(Observed_EcoBl_model,Observed_EcoBl_model_SMC)
-#    df      AIC
-#Observed_EcoBl_model     5 1447.150
-#Observed_EcoBl_model_SMC  6 1424.182 #YES
+	# lower with SMC
 
 anova(Observed_EcoBl_model_SMC, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#                              Sum Sq Mean Sq NumDF   DenDF F value Pr(>F)
-#Ecotype                          85.605  85.605     1  45.068  0.0383 0.8457
-#SMC_                           228.086 228.086     1 111.641  0.1020 0.7500
 
 # pairise test
 library(emmeans)
 emmeans(Observed_EcoBl_model, pairwise ~ Ecotype, adjust = "fdr")
-
-#$emmeans
-# Ecotype emmean   SE    df lower.CL upper.CL
-# Lowland    355 9.26 19.93      336      374
-# Upland     351 6.70  6.82      336      367
-
-#Degrees-of-freedom method: kenward-roger 
-#Confidence level used: 0.95 
-
-#$contrasts
-# contrast         estimate   SE   df t.ratio p.value
-# Lowland - Upland      3.5 11.4 41.6 0.306   0.7610 
-
 
 ```
 
@@ -1394,53 +1334,32 @@ model = lmer(sqrt(Evenness_Pielou) ~ Variety + (1|Block/Variety), data = fungi.r
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = resid(model) 
 shapiro.test(res) 
-# log p <0.001
-# sqrt p<0.001 
-
 
 # mixed effects model despite non-normal data 
 Fungi_Even = lmer(log(Evenness_Pielou) ~ Variety + (1|Block/Variety), data = fungi.rfy_diversity)
 
 Anova(Fungi_Even, type = "III")
-#Chisq Df Pr(>Chisq)    
-#(Intercept) 59.8396  1  1.029e-14 ***
-#Variety      9.6255 11     0.5644    
 
 
-### Non-parametric stats for Evenness diversity (don't know how to add Block)
+### Non-parametric stats for Evenness diversity (can't add block or soil moisture content)
 # Note this compares medians/not means so can be affected by unequal distributions 
 #http://influentialpoints.com/Training/Kruskal-Wallis_ANOVA_use_and_misuse.htm
 fungi.even_Kruskal <- kruskal.test(Evenness_Pielou ~ Variety , data = fungi.rfy_diversity)
 fungi.even_Kruskal
-#data:  Evenness_Pielou by Variety
-#Kruskal-Wallis chi-squared = 8.9806, df = 11, p-value = 0.6237 
+
+
 library(FSA)
 fungi.even_dunn <- dunnTest(Evenness_Pielou ~ Variety, data = fungi.rfy_diversity, method= "bh") # bh is the same as fdr 
 fungi.even_dunn
-# no sig.
 
 
 ### Non-parametric t-test (Wilcoxon Signed-ranked test)
-
 wilcox.test(Evenness_Pielou ~ Ecotype, data = fungi.rfy_diversity) 
-#Wilcoxon rank sum test with continuity correction
-#data:  Evenness_Pielou by Ecotype
-#W = 2109, p-value = 0.8516
-#alternative hypothesis: true location shift is not equal to 0
 
-
+# see if similar results with parametric test (controlling for block)
  model = lmer(Evenness_Pielou ~ Ecotype + (1|Block/Plot), data = fungi.rfy_diversity)
  emmeans(model,pairwise~Ecotype, adjust = "fdr")
-#Ecotype emmean     SE   df lower.CL upper.CL
-# Lowland  0.753 0.0124 9.58    0.726    0.781
-# Upland   0.764 0.0102 4.58    0.737    0.791
 
-#Degrees-of-freedom method: kenward-roger 
-#Confidence level used: 0.95 
-
-#$contrasts
-# contrast         estimate     SE   df t.ratio p.value
-# Lowland - Upland  -0.0107 0.0128 40.8 -0.835  0.4088 
 ```
 ## Soil Bacteria - 12 cultivars
 ```{r}
@@ -1459,7 +1378,7 @@ rhizo.rfy_diversity$Evenness_Pielou <- rhizo.rfy_diversity$Shannon/log(rhizo.rfy
 
 
 ################################
-# Remove Dacotah Cultivar and see if trends hold# 
+# Diversity seems to be driven by Dacotah Cultivar; Remove Dacotah Cultivar and see if trends hold
 ################################
 rhizo.rfy_NoDac <- subset_samples(rhizo.rfy, Variety != "Dacotah")
 nsamples(rhizo.rfy_NoDac) #126 - good removed Dacotah samples 
@@ -1483,11 +1402,9 @@ hist(rhizo.rfy_diversity$Shannon)
 model = lmer(Shannon ~ Variety +  (1|Block/Variety) , data =   rhizo.rfy_diversity)
 res = resid(model)
 shapiro.test(res) 
-# shannon ~ Variety, p = 0.6
 
 # homoegeneity of variances
 bartlett.test(Shannon ~ Variety, data = rhizo.rfy_diversity) 
-# Shannon ~ Variety, p = 0.9
 
 
 # Does Shannon differ by Variety? (Shannon is normally distributed)
@@ -1499,24 +1416,11 @@ Shannon_VarietyBl_model <- lmer(Shannon ~ Variety + (1|Block/Variety), data = rh
 
 Shannon_VarietyBl_model_SMC <- lmer(Shannon ~ Variety + SMC_perc_GravWaterCont_OutlierRmv + (1|Block/Variety), data =   rhizo.rfy_diversity)
 
-Shannon_VarietyBl_model_date <- lmer(Shannon ~ Date_Julian + Variety + (1|Block/Variety), data =   rhizo.rfy_diversity)
-# rank deficient model 
-
-Shannon_VarietyBl_model_NO3 <- lmer(Shannon ~ Variety +NO3_ugN_g_drysoil_K2SO4_SMCOutRmv+ (1|Block/Variety), data =   rhizo.rfy_diversity)
-# rank deficient model 
-
 AIC(Shannon_VarietyBl_model,  Shannon_VarietyBl_model_NO3)
-#  df       AIC
-#Shannon_VarietyBl_model      15 -117.5242
-#Shannon_VarietyBl_model_date 15 -113.6324
-#Shannon_VarietyBl_model_SMC  16 -106.3809 
-#Shannon_VarietyBl_model_NO3 16 -110.3907
+	# lower with SMC
 
 
 anova(Shannon_VarietyBl_model_date, type = "III")
-#Sum Sq  Mean Sq NumDF  DenDF F value    Pr(>F)    
-#Variety 0.57019 0.051836    11 32.309  4.4052 0.0004719 ***
-
 
 # pairwise test (gives you p.values for every combination)
 emmeans(Shannon_VarietyBl_model, pairwise ~ Variety, adjust = "fdr")
@@ -1531,20 +1435,6 @@ CLD = cld(marginal,
           adjust="fdr")         ###  Tukey-adjusted comparisons
 
 CLD
- #Variety      lsmean     SE   df lower.CL upper.CL .group
-#  Kanlow         6.36 0.0590 8.63     6.13     6.59  a    
-# EG1102         6.36 0.0590 8.63     6.13     6.59  a    
-# NE28           6.38 0.0590 8.63     6.15     6.61  a    
-# EG2101         6.45 0.0590 8.63     6.22     6.67  ab   
-# Alamo          6.45 0.0590 8.63     6.22     6.67  ab   
-# Southlow       6.45 0.0590 8.63     6.23     6.68  ab   
-# Shelter        6.46 0.0608 9.71     6.23     6.68  ab   
-# Cave-in-Rock   6.47 0.0608 9.71     6.25     6.70  ab   
-# EG1101         6.48 0.0590 8.63     6.25     6.71  ab   
-# Trailblazer    6.52 0.0608 9.71     6.29     6.74  abc  
-# Blackwell      6.54 0.0590 8.63     6.31     6.77   bc  
-# Dacotah        6.67 0.0590 8.63     6.44     6.89    c  
-
 
 ################################
 # Remove Dacotah and see if trend holds# 
@@ -1559,12 +1449,9 @@ model = lmer(Shannon ~ Variety +  (1|Block/Variety), rhizo.rfy_NoDac_diversity)
 plot(model)
 res = resid(model)
 shapiro.test(res) 
-# shannon ~ Variety, p = 0.58
 
 # homoegeneity of variances
 bartlett.test(Shannon ~ Variety, data = rhizo.rfy_NoDac_diversity) 
-# Shannon ~ Variety, p = 0.8
-
 
 # Does Shannon differ by Variety? (Shannon is normally distributed)
 require(lme4)
@@ -1574,14 +1461,9 @@ Shannon_VarietyBl_model_noDac <- lmer(Shannon ~ Variety +  (1|Block/Variety), da
 Shannon_VarietyBl_model_noDac_SMC <- lmer(Shannon ~ Variety + SMC_perc_GravWaterCont_OutlierRmv + (1|Block/Variety), data = rhizo.rfy_NoDac_diversity)
 
 AIC(Shannon_VarietyBl_model_noDac, Shannon_VarietyBl_model_noDac_SMC)
-# df        AIC
-#Shannon_VarietyBl_model_noDac     14 -102.15589
-#Shannon_VarietyBl_model_noDac_SMC 15  -92.79755#
+	# lower with SMC
 
-anova(Shannon_VarietyBl_model_noDac, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#         Sum Sq  Mean Sq NumDF  DenDF F value  Pr(>F)  
-#Variety 0.26685 0.026685    10 29.325   2.144 0.05295 .
+anova(Shannon_VarietyBl_model_noDac_SMC, type = "III")
 
 # pairwise test (gives you p.values for every combination)
 emmeans(Shannon_VarietyBl_model_noDac, pairwise ~ Variety, adjust = "fdr")
@@ -1597,19 +1479,6 @@ CLD = cld(marginal,
 
 CLD
 
-#Variety      lsmean     SE    df lower.CL upper.CL .group
-# Kanlow         6.36 0.0560  9.67     6.15     6.57  a    
-# EG1102         6.36 0.0560  9.67     6.16     6.57  a    
-# NE28           6.38 0.0560  9.67     6.17     6.58  a    
-# EG2101         6.45 0.0560  9.67     6.24     6.65  a    
-## Alamo          6.45 0.0560  9.67     6.24     6.65  a    
-# Southlow       6.45 0.0560  9.67     6.25     6.66  a    
-## Shelter        6.46 0.0581 11.07     6.25     6.66  a    
-# Cave-in-Rock   6.47 0.0581 11.07     6.27     6.68  a    
-# EG1101         6.48 0.0560  9.67     6.27     6.68  a    
-## Trailblazer    6.52 0.0581 11.07     6.31     6.72  a    
-# Blackwell      6.54 0.0560  9.67     6.33     6.75  a  
-
 ########################################
 # Does Shannon Diversity differ by Ecotype? Upland > Lowland (but driven by Dacotah)
 #########################################
@@ -1620,23 +1489,16 @@ Shannon_EcoBl_model <- lmer(Shannon ~ Ecotype + (1|Block/Plot), data = rhizo.rfy
 Shannon_EcoBl_model_SMC <- lmer(Shannon ~ Ecotype +SMC_perc_GravWaterCont_OutlierRmv + (1|Block/Plot), data = rhizo.rfy_diversity)
 
 AIC(Shannon_EcoBl_model, Shannon_EcoBl_model_SMC)
-# df      AIC
-#Shannon_EcoBl_model      5 -148.263
-#Shannon_EcoBl_model_SMC  6 -143.107
+ # lower with SMC
 
 plot(Shannon_EcoBl_model)
 
 anova(Shannon_EcoBl_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-  #        Sum Sq  Mean Sq NumDF  DenDF F value  Pr(>F)  
-#Ecotype 0.071919 0.071919     1 42.443  6.1455 0.01723 *
 
 # pairise test
 library(emmeans)
 emmeans(Shannon_EcoBl_model, pairwise ~ Ecotype, adjust = "fdr")
-#contrast           estimate         SE    df t.ratio p.value
- #Lowland - Upland -0.0796252 0.03212222 42.16  -2.479  0.0173
-# Upland > diversity than lowland
+
 
 ################ Is this driven by Dacotah? 
 require(lme4)
@@ -1644,47 +1506,8 @@ require(lmerTest)
 Shannon_EcoBl_noDac_model <- lmer(Shannon ~ Ecotype + (1|Block/Plot), data = rhizo.rfy_NoDac_diversity)
 
 anova(Shannon_EcoBl_noDac_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-   #      Sum Sq Mean Sq NumDF  DenDF F value  Pr(>F)  
-#Ecotype 0.04606 0.04606     1 38.146  3.7205 0.06121
 
 emmeans(Shannon_EcoBl_noDac_model, pairwise~Ecotype, p.adjust = "fdr")
-#Ecotype emmean     SE   df lower.CL upper.CL
-# Lowland   6.41 0.0449 4.16     6.29     6.53
-# Upland    6.47 0.0426 3.40     6.34     6.59
-
-#Degrees-of-freedom method: kenward-roger 
-#Confidence level used: 0.95 
-
-#$contrasts
-# contrast         estimate    SE df t.ratio p.value
-# Lowland - Upland   -0.054 0.028 38 -1.928  0.0613 
-
-
-##################################################
-# Does Shannon Div. differ among cultivars sampled on the same date? (Julian dates: 180, 195, 202, 209)
-##################################################
-
-# subset diversity data by date 
-rhizo.rfy_diversity_180 <- filter(rhizo.rfy_diversity, Date_Julian == "180")
-rhizo.rfy_diversity_195 <- filter(rhizo.rfy_diversity, Date_Julian == "195")
-rhizo.rfy_diversity_202 <- filter(rhizo.rfy_diversity, Date_Julian == "202")
-rhizo.rfy_diversity_209 <- filter(rhizo.rfy_diversity, Date_Julian == "209")
-
-
-Shannon_VarietyBl_model_180 <- lmer(Shannon ~ Variety +  (1|Block/Variety), data = rhizo.rfy_diversity_180)
-anova(Shannon_VarietyBl_model_180, type = "III") # p = 0.002
-
-Shannon_VarietyBl_model_195 <- lmer(Shannon ~ Variety +  (1|Block/Variety), data = rhizo.rfy_diversity_195)
-anova(Shannon_VarietyBl_model_195, type = "III") # p = 0.808 
-
-Shannon_VarietyBl_model_202 <- lmer(Shannon ~ Variety +  (1|Block/Variety), data = rhizo.rfy_diversity_202)
-# model failed to converge 
-anova(Shannon_VarietyBl_model_202, type = "III") # p = 0.04 
-
-Shannon_VarietyBl_model_209 <- lmer(Shannon ~ Variety +  (1|Block/Variety), data = rhizo.rfy_diversity_209)
-anova(Shannon_VarietyBl_model_209, type = "III") # p = 0.206 
-
 
 ```
 
@@ -1704,28 +1527,17 @@ shapiro.test(res)
 
 # 2) homoegeneity of variances
 bartlett.test(Observed ~ Variety, data = rhizo.rfy_diversity) 
-# Richness by Var, p  0.718
 
 ## Is model fit improved with SMC as covariate?
 Observed_VarietyBl_model <- lmer(Observed ~ Variety + (1|Block/Variety), data = rhizo.rfy_diversity)
 
 Observed_VarietyBl_SMC_model <- lmer(Observed ~ SMC_perc_GravWaterCont_OutlierRmv + Variety  +  (1|Block/Variety), data = rhizo.rfy_diversity)
 
-
-Observed_VarietyBl_date <- lmer(Observed ~ Date_Julian + Variety  +  (1|Block/Variety), data = rhizo.rfy_diversity)
-
-
-
 AIC(Observed_VarietyBl_date, Observed_VarietyBl_SMC_model)
- # df      AIC
-#Observed_VarietyBl_model     15 1563.189
-#Observed_VarietyBl_SMC_model 16 1535.468 # YES 
+ #lower with SMC
 
 
 anova(Observed_VarietyBl_SMC_model, type = "III")
-#                              Sum Sq Mean Sq NumDF   DenDF F value  Pr(>F)  
-#Variety                       184306 16755.1    11  33.352  2.1775 0.04129
-#SMC_perc_OutlierRmv           5003  5002.7     1 121.594  0.6501 0.42163
 
 
 
@@ -1741,20 +1553,6 @@ CLD = cld(marginal,
           adjust="fdr")         ###  Tukey-adjusted comparisons
 
 CLD
-#Variety      lsmean   SE    df lower.CL upper.CL .group
-# EG1102         1339 44.9  8.51     1165     1513  a    
-# NE28           1406 44.4  8.19     1231     1581  ab   
-# EG2101         1410 45.3  8.82     1237     1584  ab   
-# Kanlow         1421 45.7  9.01     1247     1595  ab   
-# EG1101         1441 44.4  8.20     1266     1615  ab   
-# Shelter        1442 46.2  9.48     1269     1615  ab   
-# Southlow       1443 44.5  8.24     1269     1617  ab   
-# Trailblazer    1468 46.1  9.45     1295     1641  ab   
-# Cave-in-Rock   1477 45.9  9.27     1304     1650  ab   
-# Alamo          1478 44.5  8.25     1304     1653  ab   
-# Blackwell      1479 44.8  8.41     1304     1653  ab   
-# Dacotah        1527 47.4 10.34     1353     1700   b   
-
 
 ####################################
 # Is it driven by dakota? 
@@ -1764,12 +1562,7 @@ Obs_Variety_noDak_SMC <- lmer(Observed ~ Variety +SMC_perc_GravWaterCont_Outlier
 
 
 anova(Obs_Variety_noDak_SMC, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#                              Sum Sq Mean Sq NumDF   DenDF F value  Pr(>F)  
-#Variety                    161604 16160.4    10  30.301  2.0842 0.05839 .
-#SMC_perc                       2055  2054.5     1 110.144  0.2650 0.60775 
-                              
-                              
+
 emmeans(Obs_Variety_noDak_SMC, pairwise ~ Variety, adjust = "fdr")
 
 # OR DO THIS (gives you letter assignments)
@@ -1783,18 +1576,6 @@ CLD = cld(marginal,
 
 CLD
 
-#Variety      lsmean   SE    df lower.CL upper.CL .group
-# EG1102         1333 39.1  9.21     1187     1479  a    
-#NE28           1403 39.1  9.21     1257     1549  ab   
-# Kanlow         1412 39.1  9.21     1266     1558  ab   
-# EG2101         1425 39.1  9.21     1279     1571  ab   
-# Southlow       1440 39.1  9.21     1294     1585  ab   
-# EG1101         1444 39.1  9.21     1298     1589  ab   
-# Shelter        1445 40.9 10.89     1299     1591  ab   
-# Trailblazer    1465 40.9 10.89     1319     1611   b   
-# Alamo          1475 39.1  9.21     1329     1621   b   
-# Cave-in-Rock   1479 40.9 10.89     1333     1624   b   
-# Blackwell      1484 39.1  9.21     1338     1630   b   
 
 ########################################
 # By Ecotype? 
@@ -1806,32 +1587,16 @@ Observed_EcoBl_model <- lmer(Observed ~ Ecotype + (1|Block/Plot), data = rhizo.r
 Observed_EcoBl_model_SMC <- lmer(Observed ~ Ecotype + SMC_perc_GravWaterCont_OutlierRmv +(1|Block/Plot), data = rhizo.rfy_diversity)
 
 AIC(Observed_EcoBl_model_SMC, Observed_EcoBl_model)
-#df      AIC
-#Observed_EcoBl_model_SMC  6 1626.683 # YES
-#Observed_EcoBl_model      5 1657.701
-
+#lower with SMC
 
 plot(Observed_EcoBl_model_SMC)
 
 anova(Observed_EcoBl_model_SMC, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-      #                        Sum Sq Mean Sq NumDF   DenDF F value Pr(>F)  
-#Ecotype                        13725   13725     1  42.985  1.7703 0.1904  
-#SMC_perc_GravWaterCont        32438   32438     1 119.689  4.1841 0.0430 *
 
 # pairise test
 library(emmeans)
 emmeans(Observed_EcoBl_model, pairwise ~ Ecotype, adjust = "fdr")
-#Ecotype emmean   SE   df lower.CL upper.CL
-# Lowland   1416 35.5 4.23     1320     1512
-# Upland    1460 33.3 3.31     1359     1561
 
-#Degrees-of-freedom method: kenward-roger 
-#Confidence level used: 0.95 
-
-#$contrasts
-# contrast         estimate   SE   df t.ratio p.value
-# Lowland - Upland    -43.9 21.5 41.8 -2.043  0.0474 
 
 ############### 
 # Without dacotah 
@@ -1841,23 +1606,10 @@ Observed_EcoBl_model <- lmer(Observed ~ Ecotype + (1|Block/Plot), data = rhizo.r
 plot(Observed_EcoBl_model)
 
 anova(Observed_EcoBl_model, type = "III")
- #   Sum Sq Mean Sq NumDF  DenDF F value Pr(>F)
-#Ecotype  19544   19544     1 39.159  2.4665 0.1243
 
 # pairise test
 library(emmeans)
 emmeans(Observed_EcoBl_model, pairwise ~ Ecotype, adjust = "fdr")
-
-#Ecotype emmean   SE   df lower.CL upper.CL
-# Lowland   1416 31.7 4.21     1330     1502
-# Upland    1448 30.1 3.42     1358     1537
-
-#Degrees-of-freedom method: kenward-roger 
-#Confidence level used: 0.95 
-
-#$contrasts
-# contrast         estimate   SE   df t.ratio p.value
-# Lowland - Upland    -31.7 20.2 37.8 -1.570  0.1247 
 
 ```
 
@@ -1874,33 +1626,22 @@ model = lmer(Evenness_Pielou ~ Variety + (1|Block/Variety), data = rhizo.rfy_div
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = resid(model)
 shapiro.test(res)
-# Evenness_Pielou by Var, p=0.1
 
 # 2) homoegeneity of variances
 bartlett.test(Evenness_Pielou ~ Variety, data = rhizo.rfy_diversity) 
-# Evenness_Pielou by Var, p = 0.7156
 
 ## Analysis
-
 
 ## Will SMC as covariate improve model fit? 
 Even_Variety_model <- lmer(Evenness_Pielou ~ Variety +(1|Block/Variety), data = rhizo.rfy_diversity)
 
 Even_Variety_model_SMC <- lmer(Evenness_Pielou ~ Variety + SMC_perc_GravWaterCont_OutlierRmv+(1|Block/Variety), data = rhizo.rfy_diversity)
 
-Even_Variety_model_date <- lmer(Evenness_Pielou ~ Variety + Date_Julian+(1|Block/Variety), data = rhizo.rfy_diversity)
-
-AIC(Even_Variety_model, Even_Variety_model_date)
+AIC(Even_Variety_model, Even_Variety_model_SMC)
 # df       AIC
-#Even_Variety_model    15 -723.4241
-#Even_Variety_mode_SMC 16 -696.9520 # NO
-
-
+ # not lower with SMC
 
 anova(Even_Variety_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#           Sum Sq    Mean Sq NumDF  DenDF F value    Pr(>F)    
-#Variety 0.0049035 0.00044577    11 32.036  4.7091 0.0002802 ***
 
 emmeans(Even_Variety_model, pairwise ~ Variety, adjust = "fdr")
 
@@ -1915,22 +1656,6 @@ CLD = cld(marginal,
 
 CLD
 
-#Variety      lsmean      SE   df lower.CL upper.CL .group
-# Kanlow        0.877 0.00517 10.1    0.858    0.896  a    
-# NE28          0.880 0.00517 10.1    0.861    0.899  ab   
-# Alamo         0.884 0.00517 10.1    0.865    0.903  abc  
-# EG1102        0.884 0.00517 10.1    0.865    0.903  abc  
-# Cave-in-Rock  0.887 0.00534 11.5    0.868    0.906  abc  
-# Shelter       0.888 0.00534 11.5    0.869    0.907  abc  
-# Southlow      0.888 0.00517 10.1    0.869    0.907  abc  
-# EG2101        0.888 0.00517 10.1    0.869    0.907  abc  
-# EG1101        0.891 0.00517 10.1    0.872    0.910  abc  
-# Trailblazer   0.894 0.00534 11.5    0.875    0.913   bcd 
-# Blackwell     0.896 0.00517 10.1    0.877    0.915    cd 
-# Dacotah       0.908 0.00517 10.1    0.889    0.927     d 
-
-
-
 ########### Is it driven by dakota? 
 
 ## By Variety? 
@@ -1938,34 +1663,6 @@ Even_Variety_model <- lmer(Evenness_Pielou ~ Variety +(1|Block/Variety), data = 
 Even_Variety_model
 
 anova(Even_Variety_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
- #          Sum Sq    Mean Sq NumDF DenDF F value  Pr(>F)  
-#Variety 0.0020957 0.00020956    10  29.2  2.0648 0.06217 .
-
-# OR DO THIS (gives you letter assignments)
-marginal = lsmeans(Even_Variety_model,
-                   ~ Variety)
-
-CLD = cld(marginal,
-          alpha=0.05,
-          Letters=letters,        ### Use lower-case letters for .group
-          adjust="fdr")         ###  Tukey-adjusted comparisons
-
-CLD
-
-# Variety      lsmean      SE   df lower.CL upper.CL .group
-# Kanlow        0.877 0.00507 11.5    0.859    0.895  a    
-# NE28          0.880 0.00507 11.5    0.862    0.898  a    
-# Alamo         0.884 0.00507 11.5    0.866    0.902  a    
-# EG1102        0.884 0.00507 11.5    0.866    0.902  a    
-## Cave-in-Rock  0.887 0.00526 13.2    0.869    0.905  a    
-# Shelter       0.888 0.00526 13.2    0.870    0.906  a    
-# Southlow      0.888 0.00507 11.5    0.870    0.906  a    
-# EG2101        0.888 0.00507 11.5    0.870    0.906  a    
-# EG1101        0.891 0.00507 11.5    0.873    0.909  a    
-# Trailblazer   0.894 0.00526 13.2    0.877    0.912  a    
-# Blackwell     0.896 0.00507 11.5    0.878    0.914  a   
-
 
 
 ########################################
@@ -1978,55 +1675,25 @@ Even_Eco_model <- lmer(Evenness_Pielou ~ Ecotype +(1|Block/Plot), data = rhizo.r
 Even_Eco_model_SMC <- lmer(Evenness_Pielou ~ Ecotype +SMC_perc_GravWaterCont_OutlierRmv +(1|Block/Plot), data = rhizo.rfy_diversity)
 
 AIC(Even_Eco_model, Even_Eco_model_SMC)
-#df       AIC
-#Even_Eco_model      5 -799.3514
-#Even_Eco_model_SMC  6 -779.0489
+	# not lower with SMC-
 
 plot(Even_Eco_model)
 
 anova(Even_Eco_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#            Sum Sq    Mean Sq NumDF  DenDF F value  Pr(>F)  
-#Ecotype 0.00050872 0.00050872     1 42.288  5.4062 0.02494 *
 
 # pairise test
 library(emmeans)
 emmeans(Even_Eco_model, pairwise ~ Ecotype, adjust = "fdr")
 
-#Ecotype emmean      SE   df lower.CL upper.CL
-# Lowland  0.884 0.00427 4.97    0.873    0.895
-# Upland   0.891 0.00390 3.48    0.880    0.903
-
-#Degrees-of-freedom method: kenward-roger 
-#Confidence level used: 0.95 
-
-#$contrasts
-# contrast         estimate      SE   df t.ratio p.value
-# Lowland - Upland -0.00713 0.00306 42.2 -2.325  0.0250 
-
-
-
+###################
 ## without dacotah 
 Even_Eco_model <- lmer(Evenness_Pielou ~ Ecotype +(1|Block/Plot), data = rhizo.rfy_NoDac_diversity)
 
 plot(Even_Eco_model)
 
 anova(Even_Eco_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#            Sum Sq    Mean Sq NumDF  DenDF F value  Pr(>F)  
-#Ecotype 0.00029972 0.00029972     1 37.874  2.9646 0.09326 .
 
-#emmeans(Even_Eco_model, pairwise ~ Ecotype, adjust = "fdr")
-# Ecotype emmean      SE   df lower.CL upper.CL
-# Lowland  0.884 0.00392 4.47    0.874    0.895
-# Upland   0.889 0.00369 3.49    0.878    0.900#
-
-#Degrees-of-freedom method: kenward-roger 
-#Confidence level used: 0.95 
-
-#$contrasts
-# contrast         estimate      SE   df t.ratio p.value
-# Lowland - Upland -0.00461 0.00268 38.1 -1.722  0.0933 
+emmeans(Even_Eco_model, pairwise ~ Ecotype, adjust = "fdr")
 
 ```
 
@@ -2056,14 +1723,10 @@ model = lmer((Shannon)^2 ~ Variety*SampleSite + SMC_perc_GravWaterCont_OutlierRm
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = resid(model)
 shapiro.test(res)
-# shannon p <0.001
-# log_shannon, p<0.001
-# sq shannon, p = 0.12
+
 
 # 2) homoegeneity of variances
 bartlett.test(Shannon^2 ~ Variety , data = rhizoendo_diversity)
-# shannon p =0.6256 - equal variance
-# sq shannon p = 0.71407
 
 # check if SMC as covariate improves model fit 
 rhizoendo_shannon = lmer((Shannon)^2 ~ Variety + (1|Block/Variety), data = rhizoendo_diversity)
@@ -2072,10 +1735,7 @@ rhizoendo_shannon = lmer((Shannon)^2 ~ Variety + (1|Block/Variety), data = rhizo
 rhizoendo_shannon_SMC = lmer((Shannon)^2 ~ Variety +  SMC_perc_GravWaterCont_OutlierRmv +(1|Block/Variety), data = rhizoendo_diversity) # singular fit 
 
 AIC(rhizoendo_shannon,rhizoendo_shannon_SMC)
-  #    df      AIC
-#rhizoendo_shannon      7 690.9829 # NO 
-#rhizoendo_shannon_SMC  8 692.0643
-
+ # not lower with SMC
 
 # Anova - Does Shannon differ by Variety? 
 require(lme4)
@@ -2083,40 +1743,8 @@ require(lmerTest)
 Shannon_Variety_model <- lmer(Shannon^2 ~ Variety*SampleSite + (1|Block/Variety), data = rhizoendo_diversity)
 Shannon_Variety_model
 anova(Shannon_Variety_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#                    Sum Sq Mean Sq NumDF  DenDF   F value Pr(>F)    
-#Variety               54.8    18.3     3  8.478    1.7311 0.2338    
-#SampleSite         12421.5 12421.5     1 69.162 1178.0998 <2e-16 ***
-#Variety:SampleSite    55.1    18.4     3 69.038    1.7414 0.1666 
 
 emmeans(Shannon_Variety_model, pairwise ~ SampleSite, adjust = "fdr")
-#SampleSite  emmean    SE   df lower.CL upper.CL
-# Endosphere    14.2 0.602 7.46     12.8     15.6
-# Rhizosphere   38.1 0.579 6.55     36.7     39.5
-
-## Plot 
-# consistant colors 
-library("RColorBrewer")
-colourCount = length(unique(rhizoendo_diversity$Variety))
-getPalette = colorRampPalette(brewer.pal(9, "Set1"))
-# reorder cultivars 
-rhizoendo_diversity$Variety <- factor(rhizoendo_diversity$Variety, levels = c("Alamo", "Kanlow", "Cave-in-Rock", "Southlow"))
-
-ggplot(data = rhizoendo_diversity, aes(x = SampleSite, y = Shannon, fill = getPalette(colourCount))) + 
-  geom_boxplot(aes(factor(SampleSite), fill = factor(Variety))) + theme_classic() + 
-  scale_fill_manual(values = getPalette(colourCount))+
-  labs(x = "SampleSite", y = "Shannon Diversity") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 25)) + 
-  theme(axis.title = element_text(size = 25)) + 
-  theme(axis.text.y = element_text(size = 25)) +
-  theme(legend.title = element_text(size = 25)) + 
-  theme(legend.text = element_text(size = 20)) + 
-  theme(axis.title.x = element_text(size = 25)) + 
-  theme(axis.text.x = element_text(size = 20)) + 
-  guides(fill = guide_legend(title = "Cultivar")) 
-
-
-
 
 ```
 
@@ -2131,49 +1759,31 @@ model = lmer(Observed ~ Variety*SampleSite + SMC_perc_GravWaterCont_OutlierRmv+ 
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = resid(model)
 shapiro.test(res)
-# observed p =0.66
 
 # 2) homoegeneity of variances
 bartlett.test(Observed ~ Variety , data = rhizoendo_diversity) 
-# observed p =0.9914 - equal variance
 
 
 # Anova - Does Richness differ by Variety?  AND does SMC include model fit?
 rhizoendo_obs = lmer(Observed ~ Variety*SampleSite + (1|Block/Variety), data = rhizoendo_diversity)
 
-
 rhizoendo_obs_SMC = lmer(Observed ~ Variety*SampleSite +  SMC_perc_GravWaterCont_OutlierRmv +(1|Block/Variety), data = rhizoendo_diversity) # singular fit 
 
 AIC(rhizoendo_obs,rhizoendo_obs_SMC)
-#    df      AIC
-#rhizoendo_obs     11 925.4898
-#rhizoendo_obs_SMC 12 921.4109 #YES
-
+ # Lower with SMC 
+ 
 require(lme4)
 require(lmerTest)
 
 anova(rhizoendo_obs_SMC, type = "III")
-#  Sum Sq  Mean Sq NumDF  DenDF   F value Pr(>F)    
-#Variety                        15796     5265     3  9.011    1.5736 0.2625 #SampleSite              11155060 11155060     1 67.541 3333.8986 <2e-16 ***
-#SMC_perc_GravWaterCont_    7192     7192     1 42.333    2.1495 0.1500    
-#Variety:SampleSite          6298     2099     3 67.226    0.6274 0.5998 
 
 emmeans(rhizoendo_obs_SMC, pairwise ~ SampleSite, adjust = "fdr")
-#SampleSite  emmean   SE   df lower.CL upper.CL
-# Endosphere     171 12.7 4.94      138      203
- #Rhizosphere    889 12.4 4.47      856      922
 
-
-
-## Analysis
+####################################
 # does Observed difer by ecotype? 
+################################
 Obs_EcoSampleSite_model <- lmer(Observed ~ Ecotype*SampleSite + (1|Block/Plot), data = rhizoendo_diversity)
 anova(Obs_EcoSampleSite_model)
-#Type III Analysis of Variance Table with Satterthwaite's method
- #                    Sum Sq  Mean Sq NumDF  DenDF   F value Pr(>F)    
-#Ecotype                 513      513     1 11.399    0.1604 0.6962    
-#SampleSite         11222706 11222706     1 71.359 3509.8013 <2e-16 ***
-#Ecotype:SampleSite     3386     3386     1 71.359    1.0588 0.3070   
 
 
 ```
@@ -2190,45 +1800,27 @@ model = lmer((Evenness_Pielou) ~ SampleSite + (1|Block/Variety), data = rhizoend
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = resid(model)
 shapiro.test(res)
-# Evenness_Pielou p <0.001 
-# log_Evenness_Pielou, p <0.001
-# sq Evenness_Pielou, p = 0.09
 
 # 2) homoegeneity of variances
 bartlett.test(Evenness_Pielou^2 ~ Variety , data = rhizoendo_diversity)
 # Evenness_Pielou p =0.6256 - equal variance
 # sq Evenness_Pielou p = 0.71407
 
-emmeans(model, pairwise~SampleSite, adjust = "fdr")
-#SampleSite  emmean     SE   df lower.CL upper.CL
- #Endosphere   0.729 0.0103 12.3    0.707    0.752
- #Rhizosphere  0.909 0.0098 10.6    0.887    0.931
 
-# Test with proper mixed-effects model despite non-normal data 
+
+# Test with proper mixed-effects model with block despite non-normal data 
 rhizoendo_even = lmer(Evenness_Pielou^2 ~ Variety*SampleSite+(1|Block/Variety), data = rhizoendo_diversity) # singular fit 
 
 Anova(rhizoendo_even, Type = "III")
-#Response: Evenness_Pielou^2
-#                      Chisq Df Pr(>Chisq)    
-#Variety              4.9359  3     0.1765    
-#SampleSite         261.4840  1     <2e-16 ***
-#Variety:SampleSite   6.1541  3     0.1044 
 
-### Non-parametric stats for Shannon diversity (don't know how to add Block)
+
+### Non-parametric stats for Shannon diversity (cannot add block)
 # Note this compares medians/not means so can be affected by unequal distributions 
 #http://influentialpoints.com/Training/Kruskal-Wallis_ANOVA_use_and_misuse.htm
 rhizoendo.even <- kruskal.test(Evenness_Pielou~ SampleSite, rhizoendo_diversity)
 rhizoendo.even
-#Kruskal-Wallis rank sum test
-#data:  Evenness_Pielou by Variety
-#Kruskal-Wallis chi-squared = 64.989, df = 1, p-value = 7.532e-16
 
 wilcox.test(Evenness_Pielou ~ SampleSite, data = rhizoendo_diversity) 
-#Wilcoxon rank sum test with continuity correction
-#data:  Shannon by Ecotype
-#W = 2177, p-value = 0.6163
-
-
 ```
 ---
 # BetaDiversity 
@@ -2345,7 +1937,7 @@ fungi.rfy_bray <- phyloseq::distance(fungi.rfy_noSMCout,"bray")
 
 
 ```
-## Final paiwise padjust
+## Final pairwise p-adjust (output from Primer pairwise permanova)
 ```{r}
 ### BACTERIA 
 
@@ -2489,33 +2081,20 @@ set.seed(2)
 dbRDA <- dbrda(rhizo.rfy_w.uni.m ~ sampledata_rhizo.rfy_sub_scale$NO3_ugN_g_drysoil_K2SO4 +sampledata_rhizo.rfy_sub_scale$NH4_ugN_g_drysoil_K2SO4 +  sampledata_rhizo.rfy_sub_scale$Network_length + sampledata_rhizo.rfy_sub_scale$Avg_root_width_diam + Condition(sampledata_rhizo.rfy_sub_scale$Block))
 
 dbRDA
-# Inertia Proportion Rank RealDims
-#Total         1.02143    1.00000              
-#Conditional   0.07830    0.07665    3         
-#Constrained   0.10333    0.10117    5        5
-#Unconstrained 0.83980    0.82218  127      108
 
 summary(dbRDA)
 
 plot(dbRDA)
 
-anova(dbRDA) # overal significance 
-#   Df SumOfSqs      F Pr(>F)    
-#Model      5  0.10333 3.1253  0.001 ***
-#Residual 127  0.83980                  
+anova(dbRDA) # overall significance 
+           
            
 anova(dbRDA, by = "axis", perm.max = 500)
 
+# significance & % contribution by each predictor variable
 set.seed(2)
 x <- anova(dbRDA, by="terms", permu=999) # signifcance by terms 
 x
-#                                               Df SumOfSqs      F Pr(>F)    
-#sampledata_rhizo.rfy_sub_scale$NO3_ugN_g_drysoil_K2SO4   1  0.05995 9.0661  0.001 ***
-#sampledata_rhizo.rfy_sub_scale$NH4_ugN_g_drysoil_K2SO4   1  0.01094 1.6551  0.066 .  
-#sampledata_rhizo.rfy_sub_scale$SMC_perc_GravWaterCont    1  0.01705 2.5782  0.009 ** 
-#sampledata_rhizo.rfy_sub_scale$Avg_root_width_diam       1  0.00774 1.1708  0.247    
-#sampledata_rhizo.rfy_sub_scale$Network_length            1  0.00765 1.1565  0.262    
-#Residual                                               127  0.83980    
 
 # Calculate R2 
 x$R2 <- (x$SumOfSqs/sum(x$SumOfSqs))*100
@@ -2564,21 +2143,11 @@ dbRDA <- dbrda(fungi.rfy_bray.m ~sampledata_fungi.rfy_sub_scale$NO3_ugN_g_drysoi
 
 
 dbRDA
-#Inertia Proportion Rank RealDims
-#Total         30.46122    1.00000              
-#Conditional    1.89693    0.06227    3         
-#Constrained    1.53055    0.05025    5        5
-#Unconstrained 27.03374    0.88748  124      121
-#Inertia is squared Unknown distance 
-
-
 plot(dbRDA)
 
 anova(dbRDA) # overal significance 
-#  Df SumOfSqs      F Pr(>F)    
-#Model      5   1.5305 1.4041  0.001 ***
-#Residual 124  27.0337       
 
+# significance & % contribution by each predictor variable
 set.seed(2)
 x <- anova(dbRDA, by="terms", permu=999) # signifcance by terms 
 
@@ -2629,33 +2198,11 @@ set.seed(2)
 dbRDA <- dbrda(rhizoendo_roots_noNA_w.uni.m ~sampledata_rhizoendo_roots_noNA_sub_scale$NO3_ugN_g_drysoil_K2SO4+ +sampledata_rhizoendo_roots_noNA_sub_scale$NH4_ugN_g_drysoil_K2SO4 + sampledata_rhizoendo_roots_noNA_sub_scale$SMC_perc_GravWaterCont  + sampledata_rhizoendo_roots_noNA_sub_scale$Avg_root_width_diam + sampledata_rhizoendo_roots_noNA_sub_scale$Network_length +  Condition(sampledata_rhizoendo_roots_noNA_sub_scale$Block))
 
 dbRDA
-# Inertia Proportion Rank RealDims
-#Total         1.97606    1.00000              
-#Conditional   0.12773    0.06464    3         
-#Constrained   0.25251    0.12778    5        5
-#Unconstrained 1.59583    0.80758   33       29
-#Inertia is squared Unknown distance 
-
 plot(dbRDA)
 
-anova(dbRDA) # overal significance 
-#     Df SumOfSqs      F Pr(>F)
-#Model     5  0.25251 1.0443  0.374
-#Residual 33  1.59583 
+anova(dbRDA) # overall significance 
+ # not significant 
 
-set.seed(2)
-x <- anova(dbRDA, by="terms", permu=999) # signifcance by terms 
-#  Df SumOfSqs      F Pr(>F)  
-#sampledata_rhizoendo_roots_noNA_sub_scale$SMC_perc_GravWaterCont   1  0.02710 0.5604  0.918  
-#sampledata_rhizoendo_roots_noNA_sub_scale$Avg_root_width_diam      1  0.03503 0.7243  0.729  
-#sampledata_rhizoendo_roots_noNA_sub_scale$Network_length           1  0.06265 1.2956  0.213  
-#sampledata_rhizoendo_roots_noNA_sub_scale$NO3_ugN_g_drysoil_K2SO4  1  0.09990 2.0658  0.026 *
-#sampledata_rhizoendo_roots_noNA_sub_scale$NH4_ugN_g_drysoil_K2SO4  1  0.02783 0.5755  0.900  
-#Residual                                                          33  1.59583                            
-
-
-# Calculate R2 
-x$R2 <- (x$SumOfSqs/sum(x$SumOfSqs)) *100
 
 ```
 
@@ -2701,35 +2248,21 @@ set.seed(2)
 dbRDA <- dbrda(rhizoendo_soil_noNA_w.uni.m ~sampledata_rhizoendo_soil_noNA_sub_scale$NO3_ugN_g_drysoil_K2SO4+ +sampledata_rhizoendo_soil_noNA_sub_scale$NH4_ugN_g_drysoil_K2SO4 + sampledata_rhizoendo_soil_noNA_sub_scale$SMC_perc_GravWaterCont  + sampledata_rhizoendo_soil_noNA_sub_scale$Avg_root_width_diam + sampledata_rhizoendo_soil_noNA_sub_scale$Network_length +  Condition(sampledata_rhizoendo_soil_noNA_sub_scale$Block))
 
 dbRDA
-#    Inertia Proportion Rank
-#Total         0.37831    1.00000     
-#Conditional   0.03718    0.09829    3
-##Constrained   0.05791    0.15307    5
-#Unconstrained 0.28322    0.74864   37  
 
 plot(dbRDA)
 
-anova(dbRDA) # overal significance 
-##  Df SumOfSqs     F Pr(>F)   
-#Model     5 0.057908 1.513  0.002 **
-#Residual 37 0.283218 
+anova(dbRDA) # overall significance 
 
+# significance & % contribution by each predictor variable
 set.seed(2)
 x <- anova(dbRDA, by="terms", permu=999) # signifcance by terms 
-# Df SumOfSqs      F Pr(>F)   
-#sampledata_rhizoendo_soil_noNA_sub_scale$SMC_perc_GravWaterCont   1 0.010635 1.3894  0.104   
-#sampledata_rhizoendo_soil_noNA_sub_scale$Avg_root_width_diam      1 0.007690 1.0046  0.386   
-#sampledata_rhizoendo_soil_noNA_sub_scale$Network_length           1 0.011707 1.5294  0.067 . 
-#sampledata_rhizoendo_soil_noNA_sub_scale$NO3_ugN_g_drysoil_K2SO4  1 0.020245 2.6449  0.002 **
-#sampledata_rhizoendo_soil_noNA_sub_scale$NH4_ugN_g_drysoil_K2SO4  1 0.007631 0.9969  0.420   
-#Residual                                                         37 0.283218                 
 
 # Calculate R2 
 x$R2 <- (x$SumOfSqs/sum(x$SumOfSqs)) *100
 
 ```
 ---
-# Identify variable Phyla with MVabund
+# Identify variable phyla with MVabund (Figure 4)
   *What bacterial phyla (or classes of proteobacteria) differ among cultivars?*
 
 ## Soil Bacteria 
@@ -2739,8 +2272,6 @@ x$R2 <- (x$SumOfSqs/sum(x$SumOfSqs)) *100
 library(mvabund)
 library(dplyr)
 library(tibble)
-
-# What bacterial phyla (or classes of proteobacteria) differ among cultivars?
 
 # Populate Proteobacteria classes in phylum level 
 #https://github.com/joey711/phyloseq/issues/659
@@ -2882,27 +2413,17 @@ Actino_VarSMC <- lm(log(Abundance) ~ Variety +SMC_perc_GravWaterCont_OutlierRmv,
 
 res = Actino_VarSMC$residuals
 shapiro.test(res) 
-# 0.001
-# log p = 0.7
 
 # homoegeneity of variances
 bartlett.test(log(Abundance) ~ Variety, data = rhizo.rfy_phy_sig.df_sums_Actino) 
-# p <0.001
-# log p = 0.16
 
 
 AIC(Actino_VarSMC, Actino_Var)
-# df      AIC
-#Actino_VarSMC 14 53.27872
-#Actino_Var    13 55.35742
-
+	# lower with SMC 
+	
 Anova(Actino_VarSMC, type = "III")
-# Sum Sq  Df   F value    Pr(>F)    
-#(Intercept)                       123.010   1 1577.8144 < 2.2e-16 ***
-#Variety                             8.926  11   10.4082 2.828e-13 ***
-#SMC_perc_GravWaterCont_OutlierRmv   0.320   1    4.0986   0.04508 *  
-#Residuals                           9.589 123                        
 
+# get p-adjusted significance letters
 marginal = lsmeans(Actino_VarSMC,
                    ~ Variety)
 
@@ -2912,19 +2433,6 @@ CLD = cld(marginal,
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
 
-# Variety     lsmean     SE  df lower.CL upper.CL .group
-# EG1102        5.11 0.0827 123     4.87     5.35  a    
-# NE28          5.17 0.0810 123     4.94     5.41  a    
-# Alamo         5.24 0.0814 123     5.00     5.48  a    
-# Kanlow        5.28 0.0851 123     5.03     5.53  ab   
-# EG1101        5.53 0.0811 123     5.29     5.76   bc  
-# EG2101        5.63 0.0850 123     5.39     5.88    c  
-# Trailblazer   5.64 0.0893 123     5.37     5.90    cd 
-# Southlow      5.69 0.0813 123     5.45     5.92    cd 
-# CinR          5.69 0.0885 123     5.43     5.95    cd 
-# Shelter       5.70 0.0894 123     5.44     5.97    cd 
-# Dacotah       5.92 0.0925 123     5.65     6.19     de
-# Blackwell     6.03 0.0821 123     5.79     6.27      e
 
 ############################################################
 # ECOTYPE 
@@ -2936,27 +2444,16 @@ Actino_EcoSMC <- lm(log(Abundance) ~ Ecotype +SMC_perc_GravWaterCont_OutlierRmv,
 
 res = Actino_EcoSMC$residuals
 shapiro.test(res) 
-# 0.001
-# log p = 0.4
 
 # homoegeneity of Ecoiances
 bartlett.test(log(Abundance) ~ Ecotype, data = rhizo.rfy_phy_sig.df_sums_Actino) 
-# p <0.001
-# log p = 0.06
 
 AIC(Actino_EcoSMC, Actino_Eco)
-#                     df       AIC
-#Actino_EcoSMC  4  95.57694
-#Actino_Eco     3 116.35475
-
+	# lower with SMC
 
 Anova(Actino_EcoSMC, type = "III")
-#Sum Sq  Df  F value    Pr(>F)    
-#(Intercept)                       250.119   1 2194.175 < 2.2e-16 ***
-#Ecotype                             3.354   1   29.425 2.657e-07 ***
-#SMC_perc_GravWaterCont_OutlierRmv   2.459   1   21.570 8.093e-06 ***
-#Residuals                          15.161 133                                            
 
+# get p-adjusted significance letters
 marginal = lsmeans(Actino_EcoSMC,
                    ~ Ecotype)
 
@@ -2965,10 +2462,6 @@ CLD = cld(marginal,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
-
-# Ecotype lsmean     SE  df lower.CL upper.CL .group
-# Lowland   5.32 0.0502 133     5.21     5.44  a    
-# Upland    5.67 0.0366 133     5.58     5.75   b   
 
 ```
 #### Acidobacteria
@@ -2984,26 +2477,17 @@ Acido_VarSMC <- lm(log(Abundance) ~ Variety +SMC_perc_GravWaterCont_OutlierRmv, 
 
 res = Acido_VarSMC$residuals
 shapiro.test(res) 
-# 0.001
-# log p = 0.2
 
 # homoegeneity of variances
 bartlett.test(log(Abundance) ~ Variety, data = rhizo.rfy_phy_sig.df_sums_Acido) 
-# log p = 0.11
 
 
 AIC(Acido_VarSMC, Acido_Var)
-# df       AIC
-#Acido_VarSMC 14 -156.6605
-#Acido_Var    13 -156.2354
+	 # slightly lower with SMC 
 
 Anova(Acido_VarSMC, type = "III")
-#  Sum Sq  Df    F value    Pr(>F)    
-#(Intercept)                       212.486   1 12760.1283 < 2.2e-16 ***
-#Variety                             0.826  11     4.5083  1.03e-05 ***
-#SMC_perc_GravWaterCont_OutlierRmv   0.054   1     3.2701     0.073 .  
-#Residuals                           2.048 123            
 
+# get p-adjusted significance letters
 marginal = lsmeans(Acido_VarSMC,
                    ~ Variety)
 
@@ -3013,19 +2497,6 @@ CLD = cld(marginal,
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
 
-# Variety     lsmean     SE  df lower.CL upper.CL .group
-# Blackwell     7.05 0.0380 123     6.94     7.16  a    
- #Dacotah       7.09 0.0427 123     6.97     7.22  ab   
- #Southlow      7.21 0.0376 123     7.10     7.32   bc  
- #Kanlow        7.23 0.0393 123     7.11     7.34   bcd 
- #Alamo         7.24 0.0376 123     7.13     7.35   bcd 
- #Trailblazer   7.24 0.0413 123     7.12     7.36   bcd 
- #EG2101        7.26 0.0393 123     7.14     7.37    cd 
- #CinR          7.26 0.0409 123     7.14     7.38    cd 
- #EG1101        7.27 0.0375 123     7.16     7.38    cd 
- #NE28          7.29 0.0375 123     7.18     7.39    cd 
- #Shelter       7.31 0.0413 123     7.19     7.43    cd 
- #EG1102        7.36 0.0382 123     7.24     7.47     d 
 
 ############################################################
 # ECOTYPE 
@@ -3037,25 +2508,17 @@ Acido_EcoSMC <- lm(log(Abundance) ~ Ecotype +SMC_perc_GravWaterCont_OutlierRmv, 
 
 res = Acido_EcoSMC$residuals
 shapiro.test(res) 
-# log p = 0.84
 
 # homoegeneity of Ecoiances
 bartlett.test(log(Abundance) ~ Ecotype, data = rhizo.rfy_phy_sig.df_sums_Acido) 
-# log p = 0.003
 
 AIC(Acido_EcoSMC, Acido_Eco)
-#    df       AIC
-#Acido_EcoSMC  4 -133.9932
-#Acido_Eco     3 -122.3018
+	# lower with SMC
 
 
 Anova(Acido_EcoSMC, type = "III")
-#Sum Sq  Df    F value    Pr(>F)    
-#(Intercept)                       377.55   1 17914.2826 < 2.2e-16 ***
-#Ecotype                             0.07   1     3.3683  0.068698 .  
-#SMC_perc_GravWaterCont_OutlierRmv   0.24   1    11.2135  0.001057 ** 
-#Residuals                           2.80 133                         
 
+# get p-adjusted significance letters
 marginal = lsmeans(Acido_EcoSMC,
                    ~ Ecotype)
 
@@ -3080,25 +2543,17 @@ Bacto_VarSMC <- lm(log(Abundance) ~ Variety +SMC_perc_GravWaterCont_OutlierRmv, 
 
 res = Bacto_VarSMC$residuals
 shapiro.test(res) 
-# log 0.2  
 
 # homoegeneity of variances
 bartlett.test(log(Abundance) ~ Variety, data = rhizo.rfy_phy_sig.df_sums_Bacto) 
-# log 0.97
 
 
 AIC(Bacto_VarSMC, Bacto_Var)
-#    df        AIC
-#Bacto_VarSMC 14   50.25287
-#Bacto_Var    13 1420.21821
-
+	# lower with SMC
+	
 Anova(Bacto_VarSMC, type = "III")
-# Sum Sq  Df   F value    Pr(>F)    
-#(Intercept)                       113.027   1 1482.3922 < 2.2e-16 ***
-#Variety                             5.322  11    6.3449 3.043e-08 ***
-#SMC_perc_GravWaterCont_OutlierRmv   0.003   1    0.0433    0.8355    
-#Residuals                           9.378 123                           9.589 123                        
 
+# get p-adjusted significance letters
 marginal = lsmeans(Bacto_VarSMC,
                    ~ Variety)
 
@@ -3107,20 +2562,6 @@ CLD = cld(marginal,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
-
-#Variety     lsmean     SE  df lower.CL upper.CL .group
-# CinR          4.61 0.0875 123     4.36     4.87  a    
-# EG2101        4.66 0.0840 123     4.42     4.91  ab   
-# EG1101        4.71 0.0802 123     4.47     4.94  ab   
-# Shelter       4.72 0.0884 123     4.46     4.97  ab   
-# Southlow      4.72 0.0804 123     4.49     4.96  ab   
-# Blackwell     4.77 0.0812 123     4.53     5.00  ab   
-# Dacotah       4.84 0.0914 123     4.57     5.11  ab   
-# Trailblazer   4.84 0.0883 123     4.58     5.10  ab   
-# EG1102        4.92 0.0817 123     4.68     5.16   b   
-# NE28          5.19 0.0802 123     4.96     5.42    c  
-# Alamo         5.20 0.0805 123     4.96     5.43    c  
-# Kanlow        5.20 0.0841 123     4.96     5.45    c  
 
 
 ############################################################
@@ -3133,37 +2574,23 @@ Bacto_EcoSMC <- lm(log(Abundance) ~ Ecotype +SMC_perc_GravWaterCont_OutlierRmv, 
 
 res = Bacto_EcoSMC$residuals
 shapiro.test(res) 
-# log p = 0.4
 
 # homoegeneity of Ecoiances
 bartlett.test(log(Abundance) ~ Ecotype, data = rhizo.rfy_phy_sig.df_sums_Bacto) 
-# log = 0.36
 
 AIC(Bacto_EcoSMC, Bacto_Eco)
-#  df      AIC
-#Bacto_EcoSMC  4 82.55517
-#Bacto_Eco     3 85.25760
-
+	# lower with SMC
 
 Anova(Bacto_EcoSMC, type = "III")
-#Sum Sq  Df   F value    Pr(>F)    
-#(Intercept)                       175.821   1 1697.3730 < 2.2e-16 ***
-#Ecotype                             0.923   1    8.9122  0.003373 ** 
-#SMC_perc_GravWaterCont_OutlierRmv   0.191   1    1.8419  0.177023    
-#Residuals                          13.777 133                                                
 
+# get p-adjusted significance letters
 marginal = lsmeans(Bacto_EcoSMC,
                    ~ Ecotype)
-
 CLD = cld(marginal,
           alpha=0.05,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
-
-#Ecotype lsmean     SE  df lower.CL upper.CL .group
-# Upland    4.81 0.0349 133     4.73     4.89  a    
-# Lowland   4.99 0.0479 133     4.88     5.10   b   
 
 
 ```
@@ -3180,47 +2607,24 @@ Beta_VarSMC <- lm((Abundance) ~ Variety +SMC_perc_GravWaterCont_OutlierRmv, data
 
 res = Beta_VarSMC$residuals
 shapiro.test(res) 
-# 0.09 
-#log = 0.007
 
 # homoegeneity of variances
 bartlett.test((Abundance) ~ Variety, data = rhizo.rfy_phy_sig.df_sums_Beta) 
-# p = 0.9
 
 AIC(Beta_VarSMC, Beta_Var)
-#df      AIC
-#Beta_VarSMC 14 1425.070
-#Beta_Var    13 1449.602
-
+	# lower with SMC 
+	
 Anova(Beta_VarSMC, type = "III")
-#um Sq  Df  F value    Pr(>F)    
-#(Intercept)                       220626   1 117.8085 < 2.2e-16 ***
-#Variety                           107323  11   5.2098 1.072e-06 ***
-#SMC_perc_GravWaterCont_OutlierRmv   4748   1   2.5351    0.1139    
-#Residuals                         230349 123                   
 
+# get p-adjusted significance letters
 marginal = lsmeans(Beta_VarSMC,
                    ~ Variety)
-
 CLD = cld(marginal,
           alpha=0.05,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
 
-# Variety     lsmean   SE  df lower.CL upper.CL .group 
- #EG1102         228 12.8 123      191      265  a     
- #NE28           235 12.6 123      199      272  ab    
- #Alamo          255 12.6 123      218      292  abc   
- #Kanlow         258 13.2 123      219      296  abcd  
- #Blackwell      273 12.7 123      236      311   bcde 
- #EG2101         281 13.2 123      242      319    cde 
- #Trailblazer    295 13.8 123      255      336    cdef
- #Dacotah        298 14.3 123      256      339    cdef
- #CinR           303 13.7 123      263      343     def
- #Shelter        304 13.9 123      264      345     def
- #Southlow       305 12.6 123      268      342      ef
- #EG1101         325 12.6 123      288      361       f
 
 ############################################################
 # ECOTYPE 
@@ -3232,25 +2636,14 @@ Beta_EcoSMC <- lm((Abundance) ~ Ecotype +SMC_perc_GravWaterCont_OutlierRmv, data
 
 res = Beta_EcoSMC$residuals
 shapiro.test(res) 
-# 0.18
 
 # homoegeneity of Ecoiances
 bartlett.test((Abundance) ~ Ecotype, data = rhizo.rfy_phy_sig.df_sums_Beta) 
-# p = 0.08
 
 AIC(Beta_EcoSMC, Beta_Eco)
-# df      AIC
-#Beta_EcoSMC  4 1454.452
-#Beta_Eco     3 1475.509
-
+	 #lower with SMC
 
 Anova(Beta_EcoSMC, type = "III")
-#Sum Sq  Df  F value Pr(>F)    
-#(Intercept)                       536103   1 215.2883 <2e-16 ***
-#Ecotype                             6480   1   2.6022 0.1091    
-#SMC_perc_GravWaterCont_OutlierRmv     11   1   0.0045 0.9466    
-#Residuals                         331192 133                
-
 
 
 ```
@@ -3269,47 +2662,23 @@ Delta_VarSMC <- lm((Abundance) ~ Variety +SMC_perc_GravWaterCont_OutlierRmv, dat
 
 res = Delta_VarSMC$residuals
 shapiro.test(res) 
-# 0.5
 
 # homoegeneity of variances
 bartlett.test((Abundance) ~ Variety, data = rhizo.rfy_phy_sig.df_sums_Delta) 
-# 0.2
-
 
 AIC(Delta_VarSMC, Delta_Var)
-#  df      AIC
-#Delta_VarSMC 14 1391.534
-#Delta_Var    13 1420.836
+	# lower with SMC 	
 
 Anova(Delta_VarSMC, type = "III")
-#Sum Sq  Df F value    Pr(>F)    
-#(Intercept)                       191871   1 131.105 < 2.2e-16 ***
-#Variety                           185201  11  11.504 1.676e-14 ***
-#SMC_perc_GravWaterCont_OutlierRmv   9399   1   6.422   0.01253 *  
-#Residuals                         180009 123                      
 
+# get p-adjusted significance letters
 marginal = lsmeans(Delta_VarSMC,
                    ~ Variety)
-
 CLD = cld(marginal,
           alpha=0.05,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
-
-# Variety     lsmean   SE  df lower.CL upper.CL .group
- #EG1102         204 11.3 123      171      237  a    
- #NE28           222 11.1 123      190      254  ab   
- #Kanlow         225 11.7 123      191      259  ab   
- #Alamo          250 11.1 123      217      282   bc  
- #CinR           271 12.1 123      236      307    cd 
- #Southlow       277 11.1 123      244      309    cd 
- #Shelter        287 12.3 123      251      323     d 
- #EG2101         293 11.6 123      259      327     d 
- #Trailblazer    293 12.2 123      257      329     d 
- #EG1101         307 11.1 123      274      339     de
- #Blackwell      334 11.3 123      302      367      e
- #Dacotah        342 12.7 123      305      379      e
 
 
 ############################################################
@@ -3322,35 +2691,23 @@ Delta_EcoSMC <- lm((Abundance) ~ Ecotype +SMC_perc_GravWaterCont_OutlierRmv, dat
 
 res = Delta_EcoSMC$residuals
 shapiro.test(res) 
-# p = 0.4
 
 # homoegeneity of Ecoiances
 bartlett.test(log(Abundance) ~ Ecotype, data = rhizo.rfy_phy_sig.df_sums_Delta) 
-# 0.04
 
 AIC(Delta_EcoSMC, Delta_Eco)
-#   df      AIC
-#Delta_EcoSMC  4 1455.362
-#Delta_Eco     3 1481.180
-
+	# lower with SMC	
 
 Anova(Delta_EcoSMC, type = "III")
-# Sum Sq  Df  F value    Pr(>F)    
-#(Intercept)                       554661   1 221.2552 < 2.2e-16 ***
-#Ecotype                            31795   1  12.6832 0.0005126 ***
-#SMC_perc_GravWaterCont_OutlierRmv   4481   1   1.7873 0.1835328    
-#Residuals                         333415 133                                                      
 
+# get p-adjusted significance letters
 marginal = lsmeans(Delta_EcoSMC,
                    ~ Ecotype)
-
 CLD = cld(marginal,
           alpha=0.05,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
-
-
 
 ```
 #### Firmicutes
@@ -3366,48 +2723,23 @@ Firmi_VarSMC <- lm(log(Abundance) ~ Variety +SMC_perc_GravWaterCont_OutlierRmv, 
 
 res = Firmi_VarSMC$residuals
 shapiro.test(res) 
-# 0.001
-# log p = 0.14
 
 # homoegeneity of variances
 bartlett.test(log(Abundance) ~ Variety, data = rhizo.rfy_phy_sig.df_sums_Firmi) 
-# p = 0.009
-
 
 AIC(Firmi_VarSMC, Firmi_Var)
-#  df      AIC
-#Firmi_VarSMC 14 165.9924
-#Firmi_Var    13 175.0133
-
+	# lower with SMC
+	
 Anova(Firmi_VarSMC, type = "III")
-# Sum Sq  Df  F value    Pr(>F)    
-#(Intercept)                       84.725   1 474.4552 < 2.2e-16 ***
-#Variety                            9.265  11   4.7165 5.239e-06 ***
-#SMC_perc_GravWaterCont_OutlierRmv  1.787   1  10.0096  0.001962 ** 
-#Residuals                         21.965 123                                
 
+# get p-adjusted significance letters
 marginal = lsmeans(Firmi_VarSMC,
                    ~ Variety)
-
 CLD = cld(marginal,
           alpha=0.05,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
-
-# Variety     lsmean    SE  df lower.CL upper.CL .group
-# EG1101        3.67 0.123 123     3.31     4.03  a    
-# Shelter       3.70 0.135 123     3.31     4.10  a    
-# EG2101        3.72 0.129 123     3.34     4.09  a    
-# CinR          3.74 0.134 123     3.35     4.13  a    
-# Southlow      3.75 0.123 123     3.39     4.10  a    
-# Trailblazer   4.00 0.135 123     3.61     4.40  ab   
-# NE28          4.02 0.123 123     3.66     4.38  ab   
-# Alamo         4.04 0.123 123     3.68     4.40  ab   
-# EG1102        4.12 0.125 123     3.76     4.49  ab   
-# Kanlow        4.24 0.129 123     3.87     4.62   b   
-# Dacotah       4.35 0.140 123     3.94     4.76   b   
-# Blackwell     4.45 0.124 123     4.09     4.82   b   
 
 ############################################################
 # ECOTYPE 
@@ -3419,35 +2751,24 @@ Firmi_EcoSMC <- lm(log(Abundance) ~ Ecotype +SMC_perc_GravWaterCont_OutlierRmv, 
 
 res = Firmi_EcoSMC$residuals
 shapiro.test(res) 
-# 0.001
-# log p = 0.3
 
 # homoegeneity of Ecoiances
 bartlett.test(log(Abundance) ~ Ecotype, data = rhizo.rfy_phy_sig.df_sums_Firmi) 
-# log p 0.005
 
 AIC(Firmi_EcoSMC, Firmi_Eco)
-#    df      AIC
-#Firmi_EcoSMC  4 193.5379
-#Firmi_Eco     3 207.0636
+	# lower with SMC
 
 
 Anova(Firmi_EcoSMC, type = "III")
-#Sum Sq  Df  F value    Pr(>F)    
-#(Intercept)                       154.019   1 657.4704 < 2.2e-16 ***
-#Ecotype                             0.073   1   0.3097 0.5788072    
-#SMC_perc_GravWaterCont_OutlierRmv   3.021   1  12.8978 0.0004617 ***
-#Residuals                          31.157 133                                                                 
 
+ # get p-adjusted significance letters
 marginal = lsmeans(Firmi_EcoSMC,
                    ~ Ecotype)
-
 CLD = cld(marginal,
           alpha=0.05,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
-
 
 ```
 #### Gemmatimonadetes
@@ -3463,25 +2784,18 @@ Gemma_VarSMC <- lm(log(Abundance) ~ Variety +SMC_perc_GravWaterCont_OutlierRmv, 
 
 res = Gemma_VarSMC$residuals
 shapiro.test(res) 
-# log p = 0.7
 
 # homoegeneity of variances
 bartlett.test(log(Abundance) ~ Variety, data = rhizo.rfy_phy_sig.df_sums_Gemma) 
-# log p = 0.6
 
 
 AIC(Gemma_VarSMC, Gemma_Var)
-# df      AIC
-#Gemma_VarSMC 14 51.94668
-#Gemma_Var    13 51.40848
-
+	# lower with SMC 
+	
 Anova(Gemma_VarSMC, type = "III")
-#Sum Sq  Df  F value    Pr(>F)    
-#(Intercept)                       75.656   1 979.9778 < 2.2e-16 ***
-##Variety                            4.833  11   5.6916 2.326e-07 ***
-#SMC_perc_GravWaterCont_OutlierRmv  0.000   1   0.0000    0.9981    
-#Residuals                          9.496 123                                             
 
+
+ # get p-adjusted significance letters
 marginal = lsmeans(Gemma_VarSMC,
                    ~ Variety)
 
@@ -3490,21 +2804,6 @@ CLD = cld(marginal,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
-
-#  Variety     lsmean     SE  df lower.CL upper.CL .group
-# NE28          4.11 0.0807 123     3.87     4.34  a    
-# EG1102        4.16 0.0823 123     3.92     4.40  a    
-# Kanlow        4.17 0.0846 123     3.92     4.42  a    
-# Alamo         4.27 0.0810 123     4.03     4.50  ab   
-# Southlow      4.47 0.0809 123     4.24     4.71   bc  
-# EG2101        4.48 0.0846 123     4.23     4.72   bc  
-# Blackwell     4.55 0.0817 123     4.31     4.79    c  
-# Dacotah       4.56 0.0920 123     4.29     4.83    c  
-# EG1101        4.58 0.0807 123     4.34     4.81    c  
-# Shelter       4.62 0.0890 123     4.36     4.88    c  
-# CinR          4.65 0.0880 123     4.39     4.91    c  
-# Trailblazer   4.71 0.0889 123     4.45     4.97    c  
-
 
 ############################################################
 # ECOTYPE 
@@ -3516,24 +2815,17 @@ Gemma_EcoSMC <- lm(log(Abundance) ~ Ecotype +SMC_perc_GravWaterCont_OutlierRmv, 
 
 res = Gemma_EcoSMC$residuals
 shapiro.test(res) 
-# log p = 0.4
 
 # homoegeneity of Ecoiances
 bartlett.test(log(Abundance) ~ Ecotype, data = rhizo.rfy_phy_sig.df_sums_Gemma) 
-# log p = 0.8
 
 AIC(Gemma_EcoSMC, Gemma_Eco)
-#    df      AIC
-#Gemma_EcoSMC  4 78.15673
-#Gemma_Eco     3 79.98720
-
+	 # lower with SMC 
+	 
 Anova(Gemma_EcoSMC, type = "III")
-#Sum Sq  Df   F value    Pr(>F)    
-#(Intercept)                       148.775   1 1483.4818 < 2.2e-16 ***
-#Ecotype                             0.991   1    9.8821  0.002058 ** 
-#SMC_perc_GravWaterCont_OutlierRmv   0.269   1    2.6784  0.104081    
-#Residuals                          13.338 133                                                   
 
+
+ # get p-adjusted significance letters
 marginal = lsmeans(Gemma_EcoSMC,
                    ~ Ecotype)
 
@@ -3543,9 +2835,7 @@ CLD = cld(marginal,
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
 
-#Ecotype lsmean     SE  df lower.CL upper.CL .group
-# Lowland   4.31 0.0471 133     4.21     4.42  a    
-# Upland    4.50 0.0343 133     4.42     4.58   b   
+  
 ```
 #### Planctomycetes
 ```{r}
@@ -3554,52 +2844,28 @@ rhizo.rfy_phy_sig.df_sums_Plancto <- filter(rhizo.rfy_phy_sig.df_sums, Phylum ==
 ### By Variety 
 ggqqplot(rhizo.rfy_phy_sig.df_sums_Plancto$Abundance)
 
-
 Plancto_Var <- lm((Abundance) ~ Variety , data =rhizo.rfy_phy_sig.df_sums_Plancto )
 Plancto_VarSMC <- lm((Abundance) ~ Variety +SMC_perc_GravWaterCont_OutlierRmv, data =rhizo.rfy_phy_sig.df_sums_Plancto )
 
 res = Plancto_VarSMC$residuals
 shapiro.test(res) 
-# 0.4
 
 # homoegeneity of variances
 bartlett.test((Abundance) ~ Variety, data = rhizo.rfy_phy_sig.df_sums_Plancto) 
-# p = 0.5
 
 AIC(Plancto_VarSMC, Plancto_Var)
-# df      AIC
-#Plancto_VarSMC 14 1569.187
-#Plancto_Var    13 1589.685
+	# lower with SMC 
 
 Anova(Plancto_VarSMC, type = "III")
-#Sum Sq  Df  F value    Pr(>F)    
-#(Intercept)                       1205590   1 223.1011 < 2.2e-16 ***
-#Variety                            185001  11   3.1123 0.0009953 ***
-#SMC_perc_GravWaterCont_OutlierRmv    4704   1   0.8704 0.3526659    
-#Residuals                          664665 123                                             
 
+# get p-adjusted significance letters
 marginal = lsmeans(Plancto_VarSMC,
                    ~ Variety)
-
 CLD = cld(marginal,
           alpha=0.05,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
-
-# Variety     lsmean   SE  df lower.CL upper.CL .group
-# Blackwell      399 21.6 123      336      462  a    
-# Shelter        411 23.5 123      342      479  ab   
-# EG2101         421 22.4 123      356      487  abc  
-# Dacotah        426 24.3 123      355      497  abc  
-# CinR           428 23.3 123      360      496  abc  
-# EG1101         429 21.4 123      367      491  abc  
-# Trailblazer    434 23.5 123      366      503  abc  
-# Southlow       453 21.4 123      391      516  abcd 
-# Kanlow         490 22.4 123      425      556   bcd 
-# NE28           499 21.3 123      436      561    cd 
-# Alamo          514 21.4 123      452      577     d 
-# EG1102         520 21.8 123      456      583     d 
 ############################################################
 # ECOTYPE 
 
@@ -3610,37 +2876,23 @@ Plancto_EcoSMC <- lm((Abundance) ~ Ecotype +SMC_perc_GravWaterCont_OutlierRmv, d
 
 res = Plancto_EcoSMC$residuals
 shapiro.test(res) 
-# p = 0.06
 
 # homoegeneity of Ecoiances
 bartlett.test((Abundance) ~ Ecotype, data = rhizo.rfy_phy_sig.df_sums_Plancto) 
-# p = 0.2
 
 AIC(Plancto_EcoSMC, Plancto_Eco)
-#  df      AIC
-#Plancto_EcoSMC  4 1572.379
-#Plancto_Eco     3 1592.732
-
+	# lower with SMC
 
 Anova(Plancto_EcoSMC, type = "III")
-#Sum Sq  Df  F value    Pr(>F)    
-#(Intercept)                       1644677   1 277.5040 < 2.2e-16 ***
-#Ecotype                             61418   1  10.3629  0.001616 ** 
-#SMC_perc_GravWaterCont_OutlierRmv    2173   1   0.3666  0.545897    
-#Residuals                          788248 133                                                                  
 
+# get p-adjusted significance letters
 marginal = lsmeans(Plancto_EcoSMC,
                    ~ Ecotype)
-
 CLD = cld(marginal,
           alpha=0.05,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
-
-#Ecotype lsmean    SE  df lower.CL upper.CL .group
- #Upland     437  8.34 133      418      456  a    
- #Lowland    484 11.45 133      458      510   b    
 
 ```
 #### Verrucomicrobia
@@ -3656,49 +2908,23 @@ Verruco_VarSMC <- lm(log(Abundance) ~ Variety +SMC_perc_GravWaterCont_OutlierRmv
 
 res = Verruco_VarSMC$residuals
 shapiro.test(res) 
-# 0.001
-# log p = 0.3
 
 # homoegeneity of variances
 bartlett.test(log(Abundance) ~ Variety, data = rhizo.rfy_phy_sig.df_sums_Verruco) 
-# p <0.001
-# log p = 0.86
-
 
 AIC(Verruco_VarSMC, Verruco_Var)
-#  df       AIC
-#Verruco_VarSMC 14 -31.15767
-#Verruco_Var    13 -22.44540
-
+	# lower with SMC
+	
 Anova(Verruco_VarSMC, type = "III")
-# S Sum Sq  Df   F value    Pr(>F)    
-#(Intercept)                       181.283   1 4326.2068 < 2.2e-16 ***
-#Variety                             2.422  11    5.2542 9.303e-07 ***
-#SMC_perc_GravWaterCont_OutlierRmv   0.441   1   10.5256  0.001516 ** 
-#Residuals                           5.154 123                        
 
+# get p-adjusted significance letters
 marginal = lsmeans(Verruco_VarSMC,
                    ~ Variety)
-
 CLD = cld(marginal,
           alpha=0.05,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
-
-# Dacotah       5.92 0.0678 123     5.72     6.12  a    
- #Trailblazer   6.05 0.0655 123     5.86     6.24  ab   
- #Blackwell     6.07 0.0602 123     5.89     6.25  ab   
- #EG1101        6.13 0.0595 123     5.95     6.30   b   
- #Shelter       6.14 0.0656 123     5.94     6.33   b   
- #CinR          6.18 0.0649 123     6.00     6.37   bc  
- #EG2101        6.22 0.0623 123     6.03     6.40   bcd 
- #Southlow      6.24 0.0596 123     6.06     6.41   bcd 
- #EG1102        6.36 0.0606 123     6.19     6.54    cd 
- #Alamo         6.37 0.0596 123     6.20     6.54    cd 
- #NE28          6.41 0.0594 123     6.24     6.58     d 
- #Kanlow        6.41 0.0624 123     6.23     6.60     d 
-
 
 ############################################################
 # ECOTYPE 
@@ -3710,39 +2936,24 @@ Verruco_EcoSMC <- lm(log(Abundance) ~ Ecotype +SMC_perc_GravWaterCont_OutlierRmv
 
 res = Verruco_EcoSMC$residuals
 shapiro.test(res) 
-# 0.001
-# log p = 0.7
 
 # homoegeneity of Ecoiances
 bartlett.test(log(Abundance) ~ Ecotype, data = rhizo.rfy_phy_sig.df_sums_Verruco) 
-# p <0.001
-# log p = 0.7
 
 AIC(Verruco_EcoSMC, Verruco_Eco)
-#  df       AIC
-#Verruco_EcoSMC  4 -7.461436
-#Verruco_Eco     3 -7.451777
-
+# lower with SMC
 
 Anova(Verruco_EcoSMC, type = "III")
-# Sum Sq  Df   F value    Pr(>F)    
-#(Intercept)                       300.629   1 5625.8993 < 2.2e-16 ***
-#Ecotype                             0.469   1    8.7747  0.003619 ** 
-#SMC_perc_GravWaterCont_OutlierRmv   0.033   1    0.6110  0.435789    
-#Residuals                           7.107 133                                                                  
 
+# get p-adjusted significance letters
 marginal = lsmeans(Verruco_EcoSMC,
                    ~ Ecotype)
-
 CLD = cld(marginal,
           alpha=0.05,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="fdr")         ###  Tukey-adjusted comparisons
 CLD
 
-#Ecotype lsmean     SE  df lower.CL upper.CL .group
- #Upland    6.17 0.0251 133     6.11     6.23  a    
- #Lowland   6.30 0.0344 133     6.22     6.38   b  
 
 ```
 
@@ -3786,10 +2997,8 @@ fungi.phyla_var_results <-anova(fungi.phyla_var, p.uni = "adjusted", nBoot =999 
 fungi.phyla_eco_results <-anova(fungi.phyla_eco, p.uni = "adjusted", nBoot =999 )
 
 results$table
-           #  Res.Df Df.diff      Dev Pr(>Dev)
-#(Intercept)                    134      NA       NA       NA
-#fungi.rfy_phyla_all$Ecotype    133       1 21.90787      0.7
-
+    
+	# export as table
 t <- as.data.frame(results$table)
 t <- rownames_to_column(t)
 x <- as.data.frame(results$uni.test)
@@ -3823,26 +3032,14 @@ fungi.Rozello.df_VarSMC <- lm(log(Abundance + 1) ~ Variety +SMC_perc_GravWaterCo
 
 res = fungi.Rozello.df_Var$residuals
 shapiro.test(res) 
-# 0.001
-# log + 1 p > 0.05
 
 # homoegeneity of variances
 bartlett.test(log(Abundance + 1) ~ Variety, data = fungi.Rozello.df) 
-# p <0.001
-# log p >0.05
-
 
 AIC(fungi.Rozello.df_Var, fungi.Rozello.df_VarSMC)
-# Df      AIC
-#fungi.Rozello.df_Var    13 458.3770
-#fungi.Rozello.df_VarSMC 14 444.2556
-
+	# lower with SMC 
+	
 Anova(fungi.Rozello.df_VarSMC, type = "III")
-#Sum Sq  Df F value    Pr(>F)    
-#(Intercept)                        54.079   1 36.4418 1.805e-08 ***
-#Variety                            48.576  11  2.9758  0.001585 ** 
-###SMC_perc_GravWaterCont_OutlierRmv   2.560   1  1.7253  0.191516    
-#Residuals                         178.077 120                        
 
 ```
 ---
@@ -3890,9 +3087,6 @@ plot(Order_Rootdiam) # residuals look normal
 Order_Rootdiam_results <-anova(Order_Rootdiam, p.uni = "adjusted", nBoot =999)
 
 Order_Rootdiam_results$table
- #                                        Res.Df Df.diff      Dev Pr(>Dev)
-#(Intercept)                                 137      NA       NA       NA
-#rhizo.rfy_order_meta$Avg_root_width_diam    136       1 369.4605    0.012
 
 # make results into a dataframe 
 t <- as.data.frame(Order_Rootdiam_results$table)
@@ -3957,28 +3151,20 @@ rhizo.rfy_core_SRL <- manyglm(rhizo.rfy_core.MVA ~  rhizo.rfy_ra.80perc_otu_samp
 # do any otus differ with root diameter?
 rhizo.rfy_core_diam <- manyglm(rhizo.rfy_core.MVA ~  rhizo.rfy_ra.80perc_otu_samp$Avg_root_width_diam, family = "poisson")
 
-
 plot(rhizo.rfy_core_diam) # residuals look slightly fan shaped...
 
-# Analysis 
+##################### Analysis  with SRL 
 #This gives an analysis of deviance table where we use likelihood ratio tests and resampled p values to look for a significant effect of Habitat on the community data.
 
 rhizo.rfy_core_SRL_results <-anova(rhizo.rfy_core_SRL, p.uni = "adjusted", nBoot =9999)
 
 rhizo.rfy_core_SRL_results$table
-#                                           
- #                                    Res.Df Df.diff      Dev Pr(>Dev)
-#(Intercept)                                  137      NA       NA       NA
-#rhizo.rfy_ra.80perc_otu_samp$SRL_giaroots    136       1 1223.051    1e-04
+
+############## Analysis with Root Diameter	                                     
 
 rhizo.rfy_core_diam_results <-anova(rhizo.rfy_core_diam, p.uni = "adjusted", nBoot =9999)
 rhizo.rfy_core_diam_results$table
-#                                                 Res.Df Df.diff      Dev Pr(>Dev)
-#(Intercept)                                         137      NA       NA       NA
-#rhizo.rfy_ra.80perc_otu_samp$Avg_root_width_diam    136       1 1495.062    1e-04
 
-
-##############################
 # make results into a dataframe 
 t <- as.data.frame(rhizo.rfy_core_diam_results$table)
 t <- rownames_to_column(t)
@@ -3994,9 +3180,7 @@ rhizo.rfy_core_diam_results.df <- rbind.fill(t,x,y)
 
 #write.csv(rhizo.rfy_core_diam_results.df, "R_output/VariableTaxa/2019.07.28_MVabund_rhizo.rfy_80perCORE_RootDiam_p9999_results_Padjust_readme.csv")
 
-
 # looked at these files to see if any OTUS significantly differ with volume-weighted SRL (giaroots) or root diameter -- none did. 
-
 
 ```
 ## Soil Fungi 
@@ -4021,9 +3205,7 @@ fungi.rfy_order_names <- merge(fungi.rfy_order_otu, fungi.rfy_order_tax[,1:5], b
 #write.csv(fungi.rfy_order_names, "R_output/VariableTaxa/2019.05.10_MVabund_fungi.rfy_OrderOTUtable.csv")
 # I exported this file, transposed it so that the samples are rows and columns are phyla; column 1 should be labeled with 'X.SampleID' to merge with metadata; all other columns should be phyla names. 
 
-################
-# Order ~ Root Diam
-################
+################ Fungal order ~ Root diameter
 
 # save as csv and then add variety to table
 fungi.rfy_order <- read.csv("C:/Users/Tayler/Documents/01_Grad School/02_Projects/01_SwitchgrassVariety/03_Data/Sequencing/ITS/R_output/VariableTaxa/Final/2019.05.10_MVabund_fungi.rfy_OrderOTUtable_clean.csv")
@@ -4038,13 +3220,7 @@ fungi.rfy_order_all.MVA <- mvabund(fungi.rfy_order_meta[,c(8:136)])
 Order_Rootdiam <- manyglm(fungi.rfy_order_all.MVA ~ fungi.rfy_order_meta$Avg_root_width_diam, family = "negative_binomial")
 plot(Order_Rootdiam) # residuals look normal
 
-
 Order_Rootdiam_results <-anova(Order_Rootdiam, p.uni = "adjusted", nBoot =999)
-
-Order_Rootdiam_results$table
-#                                         Res.Df Df.diff      Dev Pr(>Dev)
-#(Intercept)                                 134      NA       NA       NA
-#fungi.rfy_order_meta$Avg_root_width_diam    133       1 238.8551    0.016
 
 # put results into dataframe 
 t <- as.data.frame(Order_Rootdiam_results$table)
@@ -4059,9 +3235,7 @@ Order_Rootdiam_results.df <- rbind.fill(t,x,y)
 
 #write.csv(Order_Rootdiam_results.df, "C:/Users/Tayler/Documents/01_Grad School/02_Projects/01_SwitchgrassVariety/03_Data/Sequencing/ITS/R_output/VariableTaxa/Final/2019.08.07_MVabund_fungi.rfyOrder_RootDiameter_results_p999_Padjust.csv")
 
-################
-# Order ~ Root Length
-################
+################ Fungal Order ~ Root Length
 
 fungi.rfy_order_meta <- merge(sampledata_fungi.rfy[,c(2,3,7,8,10,18,23)], fungi.rfy_order, by = "X.SampleID")
 
@@ -4072,20 +3246,9 @@ fungi.rfy_order_all.MVA <- mvabund(fungi.rfy_order_meta[,c(8:136)])
 Order_RootLength <- manyglm(fungi.rfy_order_all.MVA ~ fungi.rfy_order_meta$Network_length, family = "negative_binomial")
 plot(Order_RootLength) # residuals look normal
 
-
-
 Order_RootLength_results <-anova(Order_RootLength, p.uni = "adjusted", nBoot =999)
 
 Order_RootLength_results$table
-#                                    Res.Df Df.diff      Dev Pr(>Dev)
-#(Intercept)                            134      NA       NA       NA
-#fungi.rfy_order_meta$Network_length    133       1 313.2811    0.001
-t <- as.data.frame(Order_RootLength_results$table)
-t <- rownames_to_column(t)
-x <- as.data.frame(Order_RootLength_results$uni.test)
-x <- rownames_to_column(x)
-y <- as.data.frame(Order_RootLength_results$uni.p)
-y <- rownames_to_column(y)
 
 library(plyr)
 Order_RootLength_results.df <- rbind.fill(t,x,y)
@@ -4116,17 +3279,7 @@ fungi.rfy_order.ra.df1_meta_Morti <- filter(fungi.rfy_order.ra.df1_meta, Order =
 ggqqplot(fungi.rfy_order.ra.df1_meta_Morti$Abundance)
 ggqqplot(sqrt(fungi.rfy_order.ra.df1_meta_Morti$Network_length))
 
-
 cor.test(fungi.rfy_order.ra.df1_meta_Morti$Abundance, sqrt(fungi.rfy_order.ra.df1_meta_Morti$Network_length), method = "pearson")
-
-#	Pearson's product-moment correlation
-#data:  fungi.rfy_order.ra.df1_meta_Morti$Abundance and sqrt(fungi.rfy_order.ra.df1_meta_Morti$Network_length)
-#t = -5.147, df = 133, p-value = 9.292e-07
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# -0.5393730 -0.2562446
-#sample estimates:
- #      cor -0.4075569 
 
 
 #############################
@@ -4181,18 +3334,10 @@ plot(fungi.rfy_core_rootDiam) # residuals look slightly fan shaped...
 fungi.rfy_core_rootDiam_results <-anova(fungi.rfy_core_rootDiam, p.uni = "adjusted", nBoot =9)
 
 fungi.rfy_core_VarSRLSMC_results$table
-#                                              Res.Df Df.diff          Dev Pr(>Dev)
-
-#fungi.rfy_ra.80perc_otu_samp_noNA$Variety         121      11 7.247022e+03      0.1
-#fungi.rfy_ra.80perc_otu_$SRL_giaroots_OutlierRmv -12     133 7.969945e+04      0.1
-#fungi.rfy_ra.80per$SMC_GravWaterCont_OutlierRmv      0      21 9.057587e-03      1.0
-
 ```
 ---
 # Shared Taxa across all cultivars
-
 *We defined shared taxa as those present in at least 75% of the samples within each cultivar (e.g.,9/12 sample units, 3 cores x 4 blocks = 12 samples/cultivar)*
-
 
 ## Soil Bacteria 
 ```{r}
@@ -4376,7 +3521,7 @@ sink()
 ###############################
 ### Indicator Padjust#########
 
-# read in indicator taxa organized csv file 
+# read in output from multiplatt function (organized by cultivar in excel) 	
 IndSp <- read.csv("C:/Users/Tayler Ulbrich/Documents/01_Grad School/02_Projects/01_SwitchgrassVariety/Git_SGcultivar/SharedIndicator_taxa/2019.07.18_rhizo.rfy_nosingles_AllOTUs_perm9999_clean.csv", header = TRUE)
 
 # read in list of pvalues from primer pairwise analysis 
@@ -4581,13 +3726,8 @@ Nfixers_ra.df_mean_meta <- merge(Nfixers_ra.df_mean, sampledata_rhizo.rfy[,c(1,2
 
 # ANALYSIS
 kruskal.test(Nfixers_ra.df_mean_meta$Abundance ~ Nfixers_ra.df_mean_meta$Variety)
-	#Kruskal-Wallis rank sum test
-#data:  Nfixers_ra.df_mean_meta$Abundance by Nfixers_ra.df_mean_meta$Variety
-#Kruskal-Wallis chi-squared = 8.6892, df = 11, p-value = 0.6506
-
+	
 kruskal.test(Nfixers_ra.df_mean_meta$Abundance ~ Nfixers_ra.df_mean_meta$Ecotype)
-#data:  Nfixers_ra.df_mean_meta$Abundance by Nfixers_ra.df_mean_meta$Ecotype
-#Kruskal-Wallis chi-squared = 0.034911, df = 1, p-value = 0.8518
 
 ##########################################################################
 # Do the rel.abund. of soil N-fixers differ among sample sites (root or soil for n = 4 cultivars)?
@@ -4609,13 +3749,10 @@ rhizoendo_Nfixers_ra.df_mean_meta <- merge(rhizoendo_Nfixers.df_sum, metadata2[,
 
 
 kruskal.test(rhizoendo_Nfixers_ra.df_mean_meta$Abundance ~ rhizoendo_Nfixers_ra.df_mean_meta$SampleSite)
-#Kruskal-Wallis rank sum test
-#rhizoendo_Nfixers_ra.df_mean_meta$SampleSite
-#Kruskal-Wallis chi-squared = 43.201, df = 1, p-value = 4.938e-11
 
+# summarize mean by sample site 
 rhizoendo_Nfixers_ra.df_mean_meta %>% group_by(SampleSite) %>%    summarise( mean(Abundance)) 
-# Endosphere              305. 
-#Rhizosphere              92.8
+
 
 ```
 ## Prop. of putative N-fixers (PICRUST)
@@ -4678,11 +3815,10 @@ hist(Rhizo_NfixOTUcounts_NormSeqSum_meta$Sum_NfixCount_Normalized)
 Nfix_rhizo_model = lmer(Sum_NfixCount_Normalized ~ Variety +  (1|Block/Variety) , data = Rhizo_NfixOTUcounts_NormSeqSum_meta)
 res = resid(Nfix_rhizo_model)
 shapiro.test(res) 
-# 0.63
 
 # homoegeneity of variances
 bartlett.test(Sum_NfixCount_Normalized ~ Variety, data = Rhizo_NfixOTUcounts_NormSeqSum_meta) 
-# p = 0.16
+
 
 plot(Nfix_rhizo_model)
 
@@ -4691,9 +3827,6 @@ require(lmerTest)
 
 # Anova
 anova(Nfix_rhizo_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#           Sum Sq    Mean Sq NumDF  DenDF F value    Pr(>F)    
-#Variety 0.0072158 0.00065598    11 32.499  5.9558 3.247e-05 ***
 
 
 # tukeys comparison will give letter differentiation
@@ -4707,20 +3840,6 @@ CLD = cld(marginal,
           adjust="FDR")         ###  Tukey-adjusted comparisons
 CLD
 
-#  Variety      lsmean      SE   df lower.CL upper.CL .group
-# EG1102        0.104 0.00495 11.7   0.0861    0.121  a    
-# NE28          0.114 0.00495 11.7   0.0960    0.131  ab   
-# Kanlow        0.118 0.00495 11.7   0.1000    0.135   bc  
-# Alamo         0.119 0.00495 11.7   0.1010    0.136   bcd 
-# EG2101        0.123 0.00495 11.7   0.1053    0.140   bcde
-# Southlow      0.124 0.00495 11.7   0.1062    0.141   bcde
-# Shelter       0.128 0.00515 13.6   0.1104    0.146    cde
-# Cave-in-Rock  0.129 0.00515 13.6   0.1109    0.146    cde
-# EG1101        0.129 0.00495 11.7   0.1117    0.147    cde
-# Blackwell     0.131 0.00495 11.7   0.1138    0.149     de
-# Trailblazer   0.133 0.00515 13.6   0.1149    0.150      e
-# Dacotah       0.136 0.00495 11.7   0.1183    0.153      e
-
 
 ########################################
 # Does Nfix differ by Ecotype? 
@@ -4732,31 +3851,15 @@ plot(Nfix_Rhizo_model_eco)
 
 # shapiro test 
 res = resid(Nfix_Rhizo_model_eco)
-shapiro.test(res) # p= 0.7
+shapiro.test(res) 
 
 # homoegeneity of variances
 bartlett.test(Sum_NfixCount_Normalized ~ Ecotype, data = Rhizo_NfixOTUcounts_NormSeqSum_meta) 
-# p = 0.1
-
 
 anova(Nfix_Rhizo_model_eco, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#           Sum Sq   Mean Sq NumDF  DenDF F value   Pr(>F)   
-#Ecotype 0.0010218 0.0010218     1 42.637  9.3103 0.003911 **
 
 
 emmeans(Nfix_Rhizo_model_eco, pairwise~Ecotype, adjust = "fdr")
-# Ecotype emmean      SE   df lower.CL upper.CL
-# Lowland  0.117 0.00398 5.70    0.107    0.127
-# Upland   0.127 0.00355 3.64    0.117    0.137#
-
-#Degrees-of-freedom method: kenward-roger 
-#Confidence level used: 0.95 
-
-#$contrasts
-# contrast         estimate      SE   df t.ratio p.value
-# Lowland - Upland -0.00971 0.00318 42.2 -3.051  0.0039 
-
 
 
 #### IS predicted # of Nfixers correlated with soil Nfixation and soil N measured by paired study
@@ -4764,23 +3867,10 @@ emmeans(Nfix_Rhizo_model_eco, pairwise~Ecotype, adjust = "fdr")
   
 cor.test(Rhizo_NfixOTUcounts_NormSeqSum_meta$Sum_NfixCount_Normalized, Rhizo_NfixOTUcounts_NormSeqSum_meta$sfix_rate_gN_d, method = "pearson")
 
-#t = -0.78528, df = 136, p-value = 0.4337
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval: -0.2316884  0.1010547
-#sample estimates:   cor -0.06718471 
-
 
 ### Does Nfixer abundance correlate with nitrate availability?
 
 cor.test(Rhizo_NfixOTUcounts_NormSeqSum_meta$Sum_NfixCount_Normalized, Rhizo_NfixOTUcounts_NormSeqSum_meta$NO3_ugN_g_drysoil_K2SO4, method = "pearson")
-
-#data:  Rhizo_NfixOTUcounts_NormSeqSum_meta$Sum_NfixCount_Normalized and Rhizo_NfixOTUcounts_NormSeqSum_meta$NO3_ugN_g_drysoil_K2SO4
-#t = -4.0891, df = 136, p-value = 7.373e-05
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# -0.4718971 -0.1733656
-#sample estimates:
-#       cor -0.3308846 
 
 
 ```
@@ -4800,44 +3890,30 @@ require(lmerTest)
 MBC_Variety_model <- lmer(ugC_MicBiomass_g_dry_soil ~ Variety + (1|Block/Variety), data = metadata)
 MBC_Variety_SMC_model <- lmer(ugC_MicBiomass_g_dry_soil ~ Variety + SMC_perc_GravWaterCont_OutlierRmv + (1|Block/Variety), data = metadata)
 MBC_Variety_NO3_model <- lmer(ugC_MicBiomass_g_dry_soil ~ Variety + NO3_ugN_g_drysoil_K2SO4_SMCOutRmv + (1|Block/Variety), data = metadata)
-#boundary (singular) fit: see ?isSingular
 
-isSingular(MBC_Variety_SMC_model) # TRUE
-
-plot(MBC_Variety_SMC_model) # residuals look okay 
+plot(MBC_Variety_SMC_model) 
 
 # normal residuals?
 res = resid(MBC_Variety_SMC_model)
 shapiro.test(res) 
-# MBC - p = 0.04
-
 
 #  homoegeneity of variances?
 bartlett.test(ugC_MicBiomass_g_dry_soil~ Variety, data = metadata)
-# MBC, p = 0.88
+
 
 MBC_Variety_model <- lmer(ugC_MicBiomass_g_dry_soil ~ Variety +  (1|Block/Variety), data = metadata)
 
 # normal residuals?
 res = resid(MBC_Variety_model)
 shapiro.test(res) 
-# MBC - p = 0.3
 
 
 ## Is the model improved with SMC as covariate?
 
 AIC(MBC_Variety_NO3_model, MBC_Variety_model)
-#         df      AIC
-##MBC_Variety_SMC_model 16 1434.961 # YES
-#MBC_Variety_model     15 1473.867
-#MBC_Variety_NO3_model 16 1440.766
+ # lower with SMC 
 
 anova(MBC_Variety_SMC_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#                           Sum Sq Mean Sq NumDF  DenDF F value    Pr(>F)    
-#Variety                    251333   22848    11 123.22  7.8478 3.349e-10 ***
-#SMC_perc_GravWaterCont      45910   45910     1 113.30 15.7689 0.0001261 ***
-
 
 # tukeys comparison will give letter differentiation
 library(multcompView)
@@ -4850,26 +3926,6 @@ CLD = cld(marginal,
           adjust="FDR")         ###  Tukey-adjusted comparisons
 CLD
 
-#Variety      lsmean   SE   df lower.CL upper.CL .group
-#  Cave-in-Rock   96.8 18.3 18.3     36.9      157  a    
-# Trailblazer    99.9 19.0 20.7     38.7      161  a    
-# Southlow      108.0 18.5 18.7     47.7      168  a    
-# EG1102        129.7 18.8 19.5     68.7      191  ab   
-# Dacotah       146.5 20.7 25.8     81.5      212  abc  
-# Blackwell     151.4 20.0 24.3     88.1      215  abcd 
-# Kanlow        180.1 19.3 20.9    117.9      242   bcde
-# NE28          190.3 18.4 18.5    130.1      250    cde
-# Shelter       194.8 18.6 18.9    134.3      255    cde
-# Alamo         204.3 18.5 18.7    144.0      265    cde
-# EG2101        205.1 19.2 21.1    143.5      267     de
-# EG1101        219.9 18.4 18.6    159.7      280      e
-
-#Degrees-of-freedom method: kenward-roger 
-#Confidence level used: 0.95 
-#Conf-level adjustment: bonferroni method for 12 estimates 
-#P value adjustment: fdr method for 66 tests 
-#significance level used: alpha = 0.05
-
 ###########################################################################
 # does MBC difer by ecotype? 
 ###########################################################################
@@ -4877,25 +3933,18 @@ MBC_Ecotype_model <- lmer(ugC_MicBiomass_g_dry_soil ~ Ecotype + SMC_perc_GravWat
 
 # check normality of residuals
 res = MBC_Ecotype_model$resdiduals   
-shapiro.test(res) # p = 0.04
+shapiro.test(res) 
 
 anova(MBC_Ecotype_model, type = "III") 
-#Type III Analysis of Variance Table with Satterthwaite's method
-#                                  Sum Sq Mean Sq NumDF   DenDF F value    Type III Analysis of Variance Table with Satterthwaite's method
-#                              Sum Sq Mean Sq NumDF   DenDF F value   Pr(>F)
-# Ecotype                     18328   18328     1  43.492  6.0636 0.017834 * 
-#SMC_perc_GravWaterCo         30304   30304     1 125.527 10.0259 0.001938 **
-emmeans(MBC_Ecotype_model, pairwise~Ecotype)
-##cotype emmean   SE   df lower.CL upper.CL
-# Lowland    185 15.6 8.22      150      221
-# Upland     148 13.0 4.08      112      183
- 
 
+emmeans(MBC_Ecotype_model, pairwise~Ecotype)
+
+ 
 ```
 
-###  MBC correlation with SMC or SRL or root biomass?
+###  MBC correlation with edaphic conditions and root traits?
 ```{r}
-# Pearson Correlation 
+* use a pearson correlation to determine if microbial biomass carbon correlates with edaphic cconditions and root traits*
 
 # Specific Root Length 
 ggqqplot(metadata$ugC_MicBiomass_g_dry_soil)
@@ -4904,26 +3953,13 @@ ggqqplot(log(metadata$SRL_giaroots_OutlierRmv))
 
 cor.test(metadata$ugC_MicBiomass_g_dry_soil, log(metadata$SRL_giaroots_OutlierRmv), method = "pearson")
 
-#t = 0.91581, df = 136, p-value = 0.3614
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:-0.08999299  0.24222511
-#sample estimates:      cor 0.07828918 
-
 ######################
 # avg. root diam 
 
 ggqqplot(metadata$ugC_MicBiomass_g_dry_soil)
 ggqqplot(metadata$Avg_root_width_diam)
 
-
 cor.test(metadata$ugC_MicBiomass_g_dry_soil, metadata$Avg_root_width_diam, method = "pearson")
-
-#t = -0.77428, df = 139, p-value = 0.4401
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:-0.2283705  0.1008726
-#sample estimates:       cor -0.06553232 
-
-plot(Avg_root_width_diam ~ ugN_MicBiomass_g_dry_soil, data = metadata)
 
 ##############
 # Root Biomass 
@@ -4931,15 +3967,7 @@ plot(Avg_root_width_diam ~ ugN_MicBiomass_g_dry_soil, data = metadata)
 ggqqplot(metadata$ugC_MicBiomass_g_dry_soil)
 ggqqplot(log(metadata$DryRootWt_total_g))
 
-
 cor.test(metadata$ugC_MicBiomass_g_dry_soil, log(metadata$DryRootWt_total_g), method = "pearson")
-
-#data:  metadata$ugC_MicBiomass_g_dry_soil and log(metadata$DryRootWt_total_g)
-#t = 2.4101, df = 139, p-value = 0.01726
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# 0.03616484 0.35387542 
-#sample estimates: cor 0.2002796 
 
 plot( DryRootWt_total_g~ ugC_MicBiomass_g_dry_soil, data = metadata)
 
@@ -4949,47 +3977,20 @@ plot( DryRootWt_total_g~ ugC_MicBiomass_g_dry_soil, data = metadata)
 ggqqplot(metadata$ugC_MicBiomass_g_dry_soil)
 ggqqplot(sqrt(metadata$Network_length))
 
-
 cor.test(metadata$ugC_MicBiomass_g_dry_soil, sqrt(metadata$Network_length), method = "pearson")
 
-
-#data:  metadata$ugC_MicBiomass_g_dry_soil and sqrt(metadata$Network_length)
-#t = 2.7226, df = 139, p-value = 0.007308
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval: 0.06199804 0.37631873
-#sample estimates:   cor 0.2250041 
-
 plot( Network_length~ ugC_MicBiomass_g_dry_soil, data = metadata)
-
-#############
 
 #############
 # MBC correlate with SMC? 
 
 cor.test(metadata$ugC_MicBiomass_g_dry_soil, (metadata$SMC_perc_GravWaterCont_OutlierRmv), method = "pearson")
 
-##data:  metadata$ugC_MicBiomass_g_dry_soil and (metadata$SMC_perc_GravWaterCont_OutlierRmv)
-#t = 4.6448, df = 137, p-value = 7.894e-06
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# 0.2155932 0.5043782
-#sample estimates:
-#      cor 0.3688535
-
 ###########################
 # MBC correlate with NO3? 
 
 ggqqplot(metadata$NO3_ugN_g_drysoil_K2SO4)
 cor.test(metadata$ugC_MicBiomass_g_dry_soil, (metadata$NO3_ugN_g_drysoil_K2SO4), method = "pearson")
-
-#data:  metadata$ugC_MicBiomass_g_dry_soil and (metadata$NO3_ugN_g_drysoil_K2SO4)
-#t = 3.1025, df = 139, p-value = 0.002324
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# 0.09309429 0.40285390
-#sample estimates:
- #     cor 0.2544899 
-
 
 ```
 # Microbial Biomass Nitrogen 
@@ -5010,33 +4011,26 @@ MBN_Variety_SMC_model <- lmer(ugN_MicBiomass_g_dry_soil ~ Variety + SMC_perc_Gra
 # normal residuals?
 res = resid(MBN_Variety_SMC_model)
 shapiro.test(res) 
-# MBN - p = 0.4
+
 
 #  homoegeneity of variances?
 bartlett.test(ugN_MicBiomass_g_dry_soil~ Variety, data = metadata)
-# MBN, p = 0.63
 
 MBN_Variety_model <- lmer(ugN_MicBiomass_g_dry_soil ~ Variety +  (1|Block/Variety), data = metadata)
 
 # normal residuals?
 res = resid(MBN_Variety_model)
 shapiro.test(res) 
-# MBN - p = 0.38
-
 
 
 AIC(MBN_Variety_SMC_model, MBN_Variety_model)
 #   df      AIC
-#MBN_Variety_SMC_model 16 934.3634 # YES 
-#MBN_Variety_model     15 951.8143
+	# lower with SMC 
 
 anova(MBN_Variety_SMC_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#                                 Sum Sq Mean Sq NumDF  DenDF F value Pr(>F)
-#Variety                     9562.3  869.30    11 120.19 13.6107 <2e-16 ***
-#SMC_perc_GravWaterCont_OutlierRmv  144.8  144.84     1 122.09  2.2677 0.1347 
 
-# tukeys comparison will give letter differentiation
+
+# p-adjust with significant letters
 library(multcomp)
 library(lsmeans)
 marginal = lsmeans(MBN_Variety_SMC_model,
@@ -5046,27 +4040,6 @@ CLD = cld(marginal,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="FDR")         ###  Tukey-adjusted comparisons
 CLD
-
-#Variety      lsmean   SE   df lower.CL upper.CL .group
-# Trailblazer    13.4 3.43 14.4     1.69     25.0  a    
-# Southlow       13.6 3.34 13.1     2.05     25.1  ab   
-# Cave-in-Rock   16.0 3.21 11.5     4.51     27.4  ab   
-# Dacotah        19.2 3.44 14.3     7.44     30.9  ab   
-# NE28           21.1 3.15 10.6     9.65     32.5  ab   
-# Blackwell      21.6 3.18 10.9    10.09     33.0   b   
-# EG1101         29.4 3.15 10.6    17.99     40.9    c  
-# Shelter        30.4 3.16 10.8    18.94     41.8    c  
-# EG2101         31.1 3.24 11.8    19.65     42.6    c  
-# EG1102         32.4 3.19 11.1    20.94     43.9    c  
-# Alamo          36.5 3.15 10.7    25.05     47.9    cd 
-# Kanlow         40.0 3.27 11.9    28.48     51.6     d 
-
-
-#Degrees-of-freedom method: kenward-roger 
-#Confidence level used: 0.95 
-#Conf-level adjustment: bonferroni method for 12 estimates 
-#P value adjustment: fdr method for 66 tests 
-#significance level used: alpha = 0.05 
 
 ###########################################################################
 # does MBN difer by ecotype? 
@@ -5079,20 +4052,7 @@ shapiro.test(res) # p = 0.5
 
 anova(MBN_Ecotype_model, type = "III") 
 
-#Type III Analysis of Variance Table with Satterthwaite's method
-#                          Sum Sq Mean Sq NumDF   DenDF F value    Pr(>F)    
-#Ecotype                   2648.9  2648.9     1  44.447 37.9547 1.886e-07 ***
-#SMC_perc_GravWaterCont     100.8   100.8     1 127.486  1.4443    0.2317   
-
-
-
 emmeans(MBN_Ecotype_model, pairwise~Ecotype)
-#  Ecotype emmean   SE   df lower.CL upper.CL
-# Lowland   34.7 2.66 5.85     28.2     41.2
-# Upland    21.0 2.35 3.65     14.3     27.8
-
-  #contrast         estimate   SE   df t.ratio p.value
- #Lowland - Upland     14.9 2.18 42.6 6.828   <.0001 
 
 ```
 ---
@@ -5111,52 +4071,27 @@ model = lm(log(SMC_perc_GravWaterCont_OutlierRmv) ~ Block, data = metadata)
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = model$residuals
 shapiro.test(res)
-# SMC- no outlier p = 0.5
-plot(model)
+
 
 # 2) homoegeneity of variances
 bartlett.test(log(SMC_perc_GravWaterCont_OutlierRmv) ~ Block , data = metadata)
-# SMC- no outliers - p <0.001
-# log SMC = 0.19 
 
 
 # Does SMC differ by BLock
 SMC_Block_model <- lm(log(SMC_perc_GravWaterCont_OutlierRmv) ~ Block, data = metadata)
 SMC_Block_model
 Anova(SMC_Block_model, type = "III") 
-#Anova Table (Type III tests)
-#Response: SMC_perc_GravWaterCont_OutlierRmv
-#   Sum Sq  Df  F value    Pr(>F)    
-#(Intercept) 170.117   1 2379.357 < 2.2e-16 ***
-#Block         2.203   3   10.273 3.785e-06 ***
-#Residuals     9.867 138                         
 
 # pairwise test (gives you p.values for every combination)
 emmeans(SMC_Block_model, pairwise ~ Block, adjust = "fdr")
-#$contrasts
-# contrast     estimate    SE  df t.ratio p.value
-#Four - One     0.2429 0.0635 138  3.827  0.0004 
-# Four - Three   0.3172 0.0639 138  4.963  <.0001 
-# Four - Two     0.2881 0.0635 138  4.540  <.0001 
-# One - Three    0.0743 0.0635 138  1.171  0.3655 
-# One - Two      0.0453 0.0630 138  0.718  0.5687 
-# Three - Two   -0.0291 0.0635 138 -0.458  0.6478 
-plot(metadata$SMC_perc_GravWaterCont_OutlierRmv ~ metadata$Block)
 
 # Get means by date
 # remove any data with missing metadata 
 metadata2 <- metadata %>%
   filter(!is.na(SMC_perc_GravWaterCont_OutlierRmv))
 
-
 SMC_blockmean <- metadata2 %>%  group_by(Block) %>% summarise_at("SMC_perc_GravWaterCont_OutlierRmv", list(~mean(.),~var(.), ~sd(.), ~min(.),~max(.)))
-SMC_blockmean
-#Block  mean   var    sd   min   max
-#  <fct> <dbl> <dbl> <dbl> <dbl> <dbl>
-#1 Four   9.45  7.71  2.78  4.82 17.6 
-#2 One    7.34  3.44  1.86  3.94 11.3 
-#3 Three  6.87  3.59  1.89  3.48 10.0 
-#4 Two    6.94  2.08  1.44  4.59  9.93
+
 
 ######################################
 ##### Soil nitrate (NO3) #############
@@ -5170,34 +4105,20 @@ model = lm(log(NO3_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Block, data = metadata)
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = model$residuals
 shapiro.test(res)
-# NO3 p = 0<0.001
-# log+1 NO3 p = 0.12
-plot(model)
+
 
 # 2) homoegeneity of variances
 bartlett.test(log(NO3_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Block , data = metadata)
-# NO3, p = 0.96
+
 
 # Does NO3 differ by BLock
 NO3_Block_model <- lm(log(NO3_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Block, data = metadata)
 NO3_Block_model
 Anova(NO3_Block_model, type ="III") 
- # Anova Table (Type III tests)
-#Response: log(NO3_ugN_g_drysoil_K2SO4_SMCOutRmv + 1)
-#             Sum Sq  Df   F value Pr(>F)    
-#(Intercept) 24.3327   1 1129.6337 <2e-16 ***
-#Block        0.0335   3    0.5182 0.6704    
-#Residuals    2.9726 138  
+
 
 # pairwise test (gives you p.values for every combination)
 emmeans(NO3_Block_model, pairwise ~ Block, adjust = "fdr")
-# contrast     estimate     SE  df t.ratio p.value
-# Four - One    0.00929 0.0348 138  0.267  0.8144 
-# Four - Three  0.03830 0.0351 138  1.092  0.8129 
-# Four - Two    0.03011 0.0348 138  0.864  0.8129 
-# One - Three   0.02901 0.0348 138  0.833  0.8129 
-# One - Two     0.02082 0.0346 138  0.602  0.8144 
-# Three - Two  -0.00819 0.0348 138 -0.235  0.8144 
 
 plot(metadata$NO3_ugN_g_drysoil_K2SO4_SMCOutRmv ~ metadata$Block)
 
@@ -5206,15 +4127,8 @@ plot(metadata$NO3_ugN_g_drysoil_K2SO4_SMCOutRmv ~ metadata$Block)
 metadata2 <- metadata %>%
   filter(!is.na(NO3_ugN_g_drysoil_K2SO4_SMCOutRmv))
 
-
 NO3_blockmean <- metadata2 %>%  group_by(Block) %>% summarise_at("NO3_ugN_g_drysoil_K2SO4_SMCOutRmv", list(~mean(.),~var(.), ~sd(.), ~min(.),~max(.)))
 NO3_blockmean
-#  Block  mean   var    sd   min   max
-#  <fct> <dbl> <dbl> <dbl> <dbl> <dbl>
-#1 Four   1.32 0.109 0.330  0.74  2.21
-#2 One    1.31 0.119 0.345  0.77  2.12
-#3 Three  1.24 0.116 0.341  0.68  1.97
-#4 Two    1.26 0.115 0.340  0.73  2.09
 
 
 ##############################
@@ -5229,12 +4143,10 @@ model = lm(log(NH4_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Block, data = metadata)
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = model$residuals
 shapiro.test(res)
-# log + 1 NH4 p <0.001
 
 # 2) homoegeneity of variances
 bartlett.test(log(NH4_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Block , data = metadata)
-# NH4 p<0.001
-# log + 1 p = 0.09 
+
 
 plot(model)
 
@@ -5243,22 +4155,9 @@ NH4_Block_model <- lm(log(NH4_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Block, data = m
 NH4_Block_model
 Anova(NH4_Block_model, type = "III") 
   
-#Response: log(NH4_ugN_g_drysoil_K2SO4_SMCOutRmv + 1)
-#            Sum Sq  Df  F value Pr(>F)    
-#(Intercept) 43.172   1 863.9327 <2e-16 ***
-#Block        0.345   3   2.3015 0.0799 .  
-#Residuals    6.896 138    
 
 # pairwise test (gives you p.values for every combination)
 emmeans(NH4_Block_model, pairwise ~ Block, adjust = "fdr")
-#$contrasts
-# Four - One     0.0565 0.0531 138  1.065  0.3467 
-# Four - Three   0.1386 0.0534 138  2.593  0.0632 
-# Four - Two     0.0787 0.0531 138  1.484  0.2803 
-# One - Three    0.0821 0.0531 138  1.547  0.2803 
-# One - Two      0.0222 0.0527 138  0.422  0.6736 
-# Three - Two   -0.0598 0.0531 138 -1.127  0.3467 
-
 
 plot(metadata$NH4_ugN_g_drysoil_K2SO4_SMCOutRmv ~ metadata$Block)
 
@@ -5278,27 +4177,21 @@ model = lm(log(SMC_perc_GravWaterCont_OutlierRmv) ~ Variety , data = metadata)
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = resid(model)
 shapiro.test(res)
-# SMC- no outlier p = 0.5
-plot(model)
 
 
 # 2) homoegeneity of variances
 bartlett.test(log(SMC_perc_GravWaterCont_OutlierRmv) ~ Variety , data = metadata)
-# log SMC by Var p >0.05 
+
 
 # Does SMC differ by Variety
 SMC_Var_Block_model <- lmer(log(SMC_perc_GravWaterCont_OutlierRmv) ~ Variety + (1|Block/Variety), data = metadata)
 SMC_Var_Block_model
 anova(SMC_Var_Block_model, type = "III") 
-#Type III Analysis of Variance Table with Satterthwaite's method
-#        Sum Sq Mean Sq NumDF DenDF F value    Pr(>F)    
-#Variety 3.3854 0.30777    11 33.31  7.8595 1.672e-06 ***                     
-
 
 # pairwise test (gives you p.values for every combination)
 emmeans(SMC_Var_Block_model, pairwise ~ Variety, adjust = "fdr")
 
-# tukeys comparison will give letter differentiation
+# p-adjust with significant letters
 library(multcomp)
 library(lsmeans)
 marginal = lsmeans(SMC_Var_Block_model,
@@ -5308,41 +4201,18 @@ CLD = cld(marginal,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="FDR")         ###  Tukey-adjusted comparisons
 CLD
-#Variety      lsmean     SE    df lower.CL upper.CL .group 
-# Dacotah        1.55 0.0957 10.06     1.20     1.90  a     
-# Blackwell      1.84 0.0939  9.38     1.49     2.20   b    
-# EG2101         1.88 0.0957 10.06     1.52     2.23   bc   
-# Shelter        1.89 0.0939  9.38     1.53     2.24   bcd  
-# EG1101         1.91 0.0939  9.38     1.56     2.26   bcde 
-# Cave-in-Rock   2.01 0.0939  9.38     1.66     2.37   bcdef
-# Trailblazer    2.05 0.0939  9.38     1.70     2.40   bcdef
-# NE28           2.09 0.0939  9.38     1.73     2.44    cdef
-# Southlow       2.11 0.0939  9.38     1.76     2.47     def
-# Alamo          2.12 0.0939  9.38     1.76     2.47      ef
-# EG1102         2.19 0.0939  9.38     1.84     2.54       f
-# Kanlow         2.23 0.0939  9.38     1.88     2.58       f
-
 
 #### BY ecotype? 
 SMC_Ecotype_model <- lmer(log(SMC_perc_GravWaterCont_OutlierRmv) ~ Ecotype + (1|Block/Plot),data = metadata)
 
 # check normality of residuals
 res = resid(SMC_Ecotype_model)
-shapiro.test(res) # p = 0.9
+
 
 anova(SMC_Ecotype_model, type = "III") 
-#Type III Analysis of Variance Table with Satterthwaite's method
-#         Sum Sq Mean Sq NumDF  DenDF F value   Pr(>F)   
-#Ecotype 0.34868 0.34868     1 42.515  8.8729 0.004767 **
+
 
 emmeans(SMC_Ecotype_model, pairwise~Ecotype)
-#Ecotype emmean     SE   df lower.CL upper.CL
-# Lowland   2.11 0.0815 5.32     1.91     2.32
-# Upland    1.93 0.0735 3.53     1.71     2.14
-
-#$contrasts
-# contrast         estimate     SE   df t.ratio p.value
-# Lowland - Upland    0.183 0.0616 42.7 2.979   0.0048 
 
 
 ##############################
@@ -5357,7 +4227,6 @@ model = lmer(log(NO3_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Variety + (1|Block/Varie
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = resid(model)
 shapiro.test(res)
-# NO3 p = 0.004
 
 # 2) homoegeneity of variances
 bartlett.test(log(NO3_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Variety , data = metadata)
@@ -5367,14 +4236,11 @@ bartlett.test(log(NO3_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Variety , data = metada
 NO3_Var_Block_model <- lmer(log(NO3_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Variety + (1|Block/Variety), data = metadata)
  # singular fit
 anova(NO3_Var_Block_model, type = "III") 
-#Type III Analysis of Variance Table with Satterthwaite's method
-#         Sum Sq  Mean Sq NumDF  DenDF F value   Pr(>F)    
-#Variety 0.84872 0.077156    11 36.175  11.625 7.57e-09 ***
 
 # pairwise test (gives you p.values for every combination)
 emmeans(NO3_Var_Block_model, pairwise ~ Variety, adjust = "fdr")
 
-# tukeys comparison will give letter differentiation
+# p-adjust with significant letters
 library(multcomp)
 library(lsmeans)
 marginal = lsmeans(NO3_Var_Block_model,
@@ -5384,42 +4250,18 @@ CLD = cld(marginal,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="FDR")         ###  Tukey-adjusted comparisons
 CLD
-#Variety      lsmean     SE    df lower.CL upper.CL .group 
-# Dacotah       0.653 0.0359 38.4    0.543    0.762  a     
-# EG2101        0.666 0.0359 38.4    0.557    0.776  ab    
-# EG1101        0.717 0.0351 35.5    0.610    0.825  ab    
-#Shelter       0.743 0.0351 35.5    0.636    0.851  abc   
-# Blackwell     0.760 0.0351 35.5    0.652    0.867  abc   
-# Southlow      0.761 0.0351 35.5    0.653    0.868  abc   
-# Trailblazer   0.778 0.0351 35.5    0.670    0.885   bcd  
-# Cave-in-Rock  0.836 0.0351 35.5    0.729    0.944    cde 
-# EG1102        0.891 0.0351 35.5    0.783    0.998     def
-# Alamo         0.947 0.0351 35.5    0.839    1.054      ef
-# NE28          0.992 0.0351 35.5    0.885    1.100       f
-# Kanlow        0.999 0.0351 35.5    0.892    1.107       f
-
 
 #### BY ecotype? 
 NO3_Ecotype_model <- lmer(log(NO3_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Ecotype + (1|Block/Plot),data = metadata)
-# is singular 
+
 
 # check normality of residuals
 res = resid(NO3_Ecotype_model)
-shapiro.test(res) # p = 0.2
+shapiro.test(res) 
 
 anova(NO3_Ecotype_model, type = "III") 
-#Type III Analysis of Variance Table with Satterthwaite's method
-#          Sum Sq  Mean Sq NumDF  DenDF F value   Pr(>F)   
-#Ecotype 0.063818 0.063818     1 45.701  9.5923 0.003335 **
 
 emmeans(NO3_Ecotype_model, pairwise~Ecotype)
-#Ecotype emmean     SE    df lower.CL upper.CL
-# Lowland  0.889 0.0302 20.99    0.826    0.951
-# Upland   0.774 0.0214  6.65    0.723    0.825
-##$contrasts
-## contrast         estimate    SE   df t.ratio p.value
-# Lowland - Upland    0.115 0.037 42.9 3.097   0.0034
-
 
 
 ##############################
@@ -5434,27 +4276,22 @@ model = lmer(log(NH4_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Variety + (1|Block/Varie
 # shapiro test - null hypothesis: residuals are normally distributed 
 res = resid(model)
 shapiro.test(res)
-# NH4 p = 0.002
+
 
 # 2) homoegeneity of variances
 bartlett.test(log(NH4_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Variety , data = metadata)
 
-
 plot(model)
-
 
 # Does NH4 differ by Variety
 NH4_Var_Block_model <- lmer(log(NH4_ugN_g_drysoil_K2SO4_SMCOutRmv+1) ~ Variety + (1|Block/Variety), data = metadata)
  # singular fit
 anova(NH4_Var_Block_model, type = "III") 
-#Type III Analysis of Variance Table with Satterthwaite's method
-#         Sum Sq  Mean Sq NumDF  DenDF F value Pr(>F)
-#Variety 0.25777 0.023434    11 33.117  0.5289 0.8695
 
 # pairwise test (gives you p.values for every combination)
 emmeans(NH4_Var_Block_model, pairwise ~ Variety, adjust = "fdr")
 
-# tukeys comparison will give letter differentiation
+# p-adjust with significant letters
 library(multcomp)
 library(lsmeans)
 marginal = lsmeans(NH4_Var_Block_model,
@@ -5476,17 +4313,8 @@ shapiro.test(res) # p = 0.2
 plot(NH4_Ecotype_model)
 
 anova(NH4_Ecotype_model, type = "III") 
-#Type III Analysis of Variance Table with Satterthwaite's method
-#          Sum Sq  Mean Sq NumDF  DenDF F value Pr(>F)
-#Ecotype 0.044921 0.044921     1 42.772   1.014 0.3196#
 
 emmeans(NH4_Ecotype_model, pairwise~Ecotype)
-# Ecotype emmean     SE    df lower.CL upper.CL
-# Lowland   1.01 0.0408 11.85    0.923     1.10
-# Upland    1.06 0.0321  4.86    0.974     1.14
-##$contrasts
-# contrast         estimate     SE   df t.ratio p.value
-# Lowland - Upland  -0.0446 0.0443 42.5 -1.007  0.3197 
 
 ```
 
@@ -5504,26 +4332,15 @@ hist(log(metadata$SMC_perc_GravWaterCont_OutlierRmv))
 model = lm(log(SMC_perc_GravWaterCont_OutlierRmv) ~ Date, data =   metadata)
 res = model$residuals
 shapiro.test(res) 
-# p = 0.9 
 
 # homoegeneity of variances
 bartlett.test(log(SMC_perc_GravWaterCont_OutlierRmv) ~ Date, data = metadata) 
-# p = 0.7 
+
 
 Anova(model, type = "III")
-#Response: log(SMC_perc_GravWaterCont_OutlierRmv)
-#            Sum Sq  Df  F value    Pr(>F)    
-#(Intercept) 125.50   1 2122.506 < 2.2e-16 ***
-#Date          3.91   3   22.043 1.009e-11 ***
 
 emmeans(model, pairwise~Date, adjust = "fdr")
- #contrast        estimate     SE  df t.ratio p.value
- #13-Jul - 20-Jul   -0.171 0.0540 138 -3.172  0.0028 
- #13-Jul - 27-Jul   -0.286 0.0577 138 -4.962  <.0001 
- #13-Jul - 28-Jun    0.200 0.0653 138  3.058  0.0032 
- #20-Jul - 27-Jul   -0.115 0.0536 138 -2.145  0.0337 
- #20-Jul - 28-Jun    0.371 0.0617 138  6.017  <.0001 
- #27-Jul - 28-Jun    0.486 0.0649 138  7.488  <.0001 
+
 
 plot(SMC_perc_GravWaterCont_OutlierRmv ~Date_Julian, metadata)
 
@@ -5532,22 +4349,10 @@ plot(SMC_perc_GravWaterCont_OutlierRmv ~Date_Julian, metadata)
 metadata2 <- metadata %>%
   filter(!is.na(SMC_perc_GravWaterCont_OutlierRmv))
 
-
 SMC_blockmean <- metadata2 %>%  group_by(VarRep) %>% summarise_at("SMC_perc_GravWaterCont_OutlierRmv", list(~mean(.),~var(.), ~sd(.), ~min(.),~max(.)))
-#Date    mean   var    sd   min   max
-#  <fct>  <dbl> <dbl> <dbl> <dbl> <dbl>
-#1 13-Jul  6.80  2.59  1.61  4.59 12.2 
-#2 20-Jul  8.13  4.20  2.05  4.19 12.7 
-#3 27-Jul  9.11  5.52  2.35  5.49 17.6 
-#4 28-Jun  5.62  2.14  1.46  3.48  7.97
 
 
 metadata2  %>%  group_by(VarRep) %>% summarise_at("pct_water_soil", list(~mean(.),~var(.), ~sd(.), ~min(.),~max(.)))
-#<fct>  <dbl> <dbl> <dbl> <dbl> <dbl>
-#1 13-Jul  15.8 0.533 0.730  13.9  16.7
-#2 20-Jul  16.1 0.678 0.824  14.3  17.4
-#3 27-Jul  15.4 0.962 0.981  12.9  16.5
-#4 28-Jun  14.8 0.283 0.532  14.0  15.7
 
 
 # as correlation with julian date 
@@ -5556,11 +4361,6 @@ ggqqplot(metadata$SMC_perc_GravWaterCont_OutlierRmv)
 
 cor.test(metadata$SMC_perc_GravWaterCont_OutlierRmv, metadata$Date_Julian, method = "pearson")
 cor.test(metadata$pct_water_soil, metadata$Date_Julian, method = "pearson")
-
-#t = 7.2232, df = 140, p-value = 2.975e-11
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval: 0.3897837 0.6315732
-#sample estimates:     cor 0.5210551 
 
 plot(SMC_perc_GravWaterCont_OutlierRmv ~ Date_Julian, data = metadata)
 
@@ -5575,48 +4375,27 @@ hist((metadata$NO3_ugN_g_drysoil_K2SO4_SMCOutRmv))
 model = lm(NO3_ugN_g_drysoil_K2SO4_SMCOutRmv ~ Date, data =   metadata)
 res = model$residuals
 shapiro.test(res) 
-# p <0.001 
+
 plot(model)
 
 # homoegeneity of variances
 bartlett.test((NO3_ugN_g_drysoil_K2SO4_SMCOutRmv) ~ Date, data = metadata) 
-# p = 0.23
+
 
 Anova(model, type = "III")
-#
-#Response: NO3_ugN_g_drysoil_K2SO4_SMCOutRmv
-#            Sum Sq  Df F value    Pr(>F)    
-#(Intercept) 38.231   1 561.420 < 2.2e-16 ***
-#Date         6.610   3  32.356 6.695e-16 ***
-#Residuals    9.397 138 
+
 
 emmeans(model, pairwise~Date, adjust = "fdr")
-# 13-Jul - 20-Jul  -0.2894 0.0580 138 -4.990  <.0001 
-# 13-Jul - 27-Jul  -0.5412 0.0619 138 -8.737  <.0001 
-# 13-Jul - 28-Jun  -0.0105 0.0700 138 -0.150  0.8810 
-# 20-Jul - 27-Jul  -0.2518 0.0575 138 -4.377  <.0001 
-# 20-Jul - 28-Jun   0.2789 0.0662 138  4.215  0.0001 
-# 27-Jul - 28-Jun   0.5307 0.0697 138  7.619  <.0001 
 
 # Summarize means by date 
 metadata2  %>%  group_by(Date) %>% summarise_at("NO3_ugN_g_drysoil_K2SO4_SMCOutRmv", list(~mean(.),~var(.), ~sd(.), ~min(.),~max(.)))
-#Date    mean    var    sd   min   max
-#  <fct>  <dbl>  <dbl> <dbl> <dbl> <dbl>
-#1 13-Jul  1.05 0.0458 0.214  0.73  1.65
-#2 20-Jul  1.33 0.0733 0.271  1.01  2.21
-#3 27-Jul  1.59 0.0634 0.252  1.13  2.12
-#4 28-Jun  1.06 0.0988 0.314  0.68  1.67
+
 
 ## NO3
 ggqqplot(metadata$NO3_ugN_g_drysoil_K2SO4_SMCOutRmv)
 
 cor.test(metadata$NO3_ugN_g_drysoil_K2SO4_SMCOutRmv, metadata$Date_Julian, method = "pearson")
 
-#data:  metadata$NO3_ugN_g_drysoil_K2SO4_SMCOutRmv and metadata$Date_Julian
-#t = 7.7787, df = 140, p-value = 1.45e-12
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:0.4228780 0.6548113
-#sample estimates:     cor 0.5493386
 
 ##########################
 ### Soil ammonium (NH4)###
@@ -5629,21 +4408,14 @@ hist(log(metadata$NH4_ugN_g_drysoil_K2SO4_SMCOutRmv))
 model = lm(log(NH4_ugN_g_drysoil_K2SO4_SMCOutRmv) ~ Date, data =   metadata)
 res = model$residuals
 shapiro.test(res) 
-# p <0.0001 
-# log p = 0.02 
-plot(model)
+
 
 # homoegeneity of variances
 bartlett.test(log(NH4_ugN_g_drysoil_K2SO4_SMCOutRmv) ~ Date, data = metadata) 
-# log p = 0.03
+
 
 Anova(model, type = "III")
-#
-#Response: log(NH4_ugN_g_drysoil_K2SO4_SMCOutRmv)
-#             Sum Sq  Df  F value Pr(>F)    
-#(Intercept) 13.7638   1 118.0062 <2e-16 ***
-#Date         0.4769   3   1.3629 0.2568    
-#Residuals   16.0958 138 
+
 
 emmeans(model, pairwise~Date, adjust = "fdr")
 
@@ -5652,11 +4424,6 @@ ggqqplot(metadata$NH4_ugN_g_drysoil_K2SO4_SMCOutRmv)
 
 cor.test(log(metadata$NH4_ugN_g_drysoil_K2SO4_SMCOutRmv), metadata$Date_Julian, method = "pearson")
 
-#data:  log(metadata$NH4_ugN_g_drysoil_K2SO4_SMCOutRmv) and metadata$Date_Julian
-#t = -1.505, df = 140, p-value = 0.1346
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:-0.28498306  0.03936631
-#sample estimates:  cor -0.1261792
 
 ```
 ---
@@ -5675,14 +4442,6 @@ ggqqplot(log(metadata$SRL_log))
 
 cor.test(metadata$SRL_log, log(metadata$SRL_giaroots_log), method = "pearson")
 
-#data:  metadata$SRL_log and log(metadata$SRL_giaroots_log)
-#t = 11.621, df = 142, p-value < 2.2e-16
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# 0.6035419 0.7734336
-#sample estimates:
-#      cor 0.6981891 
-
 
 plot(metadata$SRL_giaroots,metadata$SRL) 
 
@@ -5691,39 +4450,15 @@ plot(metadata$SRL_giaroots,metadata$SRL)
 
 cor.test(sqrt(metadata$Network_length), sqrt(metadata$DryRootWt_total_g), method = "pearson")
 
-#data:  sqrt(metadata$Network_length) and sqrt(metadata$DryRootWt_total_g)
-#t = 13.653, df = 142, p-value < 2.2e-16
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# 0.6727250 0.8163652
-#sample estimates:
-#  cor 0.753396 
-
 ################################
 # Average root diameter and root weight
 
 cor.test(metadata$Avg_root_width_diam, sqrt(metadata$DryRootWt_total_g), method = "pearson")
 
-#data:  metadata$Avg_root_width_diam and sqrt(metadata$DryRootWt_total_g)
-#t = 6.7582, df = 142, p-value = 3.342e-10
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# 0.3586880 0.6078453
-#sample estimates:
-#cor = 0.4933195 
-
 ######################################
 # Average root diameter and root length
 
 cor.test(metadata$Avg_root_width_diam, sqrt(metadata$Network_length), method = "pearson")
-
-#data:  metadata$Avg_root_width_diam and sqrt(metadata$DryRootWt_total_g)
-#t = 6.7582, df = 142, p-value = 3.342e-10
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# 0.3586880 0.6078453
-#sample estimates:
-#cor = 0.4933195 
 
 
 ##################################
@@ -5735,14 +4470,6 @@ ggqqplot(metadata$Avg_root_width_diam)
 
 cor.test(log(metadata$SRL_giaroots), metadata$Avg_root_width_diam, method = "pearson")
 
-
-#data:  log(metadata$SRL_giaroots) and metadata$Avg_root_width_diam
-#t = -40.859, df = 142, p-value < 2.2e-16
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:-0.9710883 -0.9447951
-#sample estimates: cor -0.9600061 
-
-
 #####################################
 #### mass-weighted SRL & diameter ###
 
@@ -5752,39 +4479,16 @@ ggqqplot(metadata$Avg_root_width_diam)
 
 cor.test(log(metadata$SRL), metadata$Avg_root_width_diam, method = "pearson")
 
-#	Pearson's product-moment correlation
-
-#data:  log(metadata$SRL) and metadata$Avg_root_width_diam
-#t = -9.929, df = 142, p-value < 2.2e-16
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:-0.7275307 -0.5322962
-#sample estimates: cor -0.6401351 
-
 ######################################
 # Average root diameter and root weight
 
 cor.test(metadata$Avg_root_width_diam, sqrt(metadata$DryRootWt_total_g), method = "pearson")
-
-#data:  metadata$Avg_root_width_diam and sqrt(metadata$DryRootWt_total_g)
-#t = 6.7582, df = 142, p-value = 3.342e-10
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# 0.3586880 0.6078453
-#sample estimates:
-#cor = 0.4933195 
 
 ######################################
 # Average root diameter and root length
 
 cor.test(metadata$Avg_root_width_diam, sqrt(metadata$Network_length), method = "pearson")
 
-#data:  metadata$Avg_root_width_diam and sqrt(metadata$DryRootWt_total_g)
-#t = 6.7582, df = 142, p-value = 3.342e-10
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# 0.3586880 0.6078453
-#sample estimates:
-#cor = 0.4933195 
 
 ```
 ## Volume-weighted SRL 
@@ -5815,28 +4519,23 @@ SRL_VarietyBl_model_SMC <- lmer(log(SRL_giaroots) ~ Variety + SMC_perc_GravWater
 
 # AIC check with SMC
 AIC(SRL_VarietyBl_model_SMC, SRL_VarietyBl_model)
-#df      AIC
-#SRL_VarietyBl_model_SMC 16 205.1903
-#SRL_VarietyBl_model     15 197.8613 # NO 
+	 # not lower with SMC
 
 # check normality 
 plot(SRL_VarietyBl_model)
 
 res = resid(SRL_VarietyBl_model)
 shapiro.test(res) 
-# log(SRL_giaroots) p = 0.06 
+
 
 # homoegeneity of variances
 bartlett.test(log(SRL_giaroots) ~ Variety, data = metadata) 
-# log(SRL_giaroots_OutlierRmv) p = 0.04
+
 
 anova(SRL_VarietyBl_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
- #       Sum Sq Mean Sq NumDF DenDF F value   Pr(>F)   
-#Variety 6.1844 0.56222    11    36  3.6184 0.001667 **
 
 
-# tukeys comparison will give letter differentiation
+# p-adjust with significant letters
 library(multcomp)
 library(lsmeans)
 marginal = lsmeans(SRL_VarietyBl_model,
@@ -5846,26 +4545,6 @@ CLD = cld(marginal,
           Letters=letters,        ### Use lower-case letters for .group
           adjust="FDR")         ###  Tukey-adjusted comparisons
 CLD
-#Variety      lsmean    SE df lower.CL upper.CL .group
-# EG1101         5.84 0.129 36     5.45     6.24  a    
-# Cave-in-Rock   5.87 0.129 36     5.47     6.26  a    
-# EG2101         5.88 0.129 36     5.48     6.27  a    
-# Alamo          6.01 0.129 36     5.62     6.41  ab   
-# EG1102         6.05 0.129 36     5.65     6.44  ab   
-# Blackwell      6.07 0.129 36     5.67     6.47  ab   
-# Dacotah        6.09 0.129 36     5.69     6.49  ab   
-# Shelter        6.13 0.129 36     5.74     6.53  ab   
-# Southlow       6.33 0.129 36     5.93     6.72  ab   
-# Trailblazer    6.39 0.129 36     5.99     6.78  ab   
-# Kanlow         6.52 0.129 36     6.13     6.92   b   
-# NE28           6.54 0.129 36     6.14     6.93   b   
-
-#Degrees-of-freedom method: kenward-roger 
-#Results are given on the log (not the response) scale. 
-#Confidence level used: 0.95 
-#Conf-level adjustment: bonferroni method for 12 estimates 
-#P value adjustment: fdr method for 66 tests 
-#significance level used: alpha = 0.05
 
 library(emmeans)
 emmeans(SRL_VarietyBl_model, list(pairwise ~ Variety), adjust = "fdr")
@@ -5880,88 +4559,22 @@ isSingular(SRL_EcotypeBl_model) #FALSE
 # shapiro test 
 res = resid(SRL_EcotypeBl_model)
 shapiro.test(res) 
-# log p = 0.02
+
 
 bartlett.test(log(SRL_giaroots) ~ Ecotype, data = metadata) 
-# log(SRL_giaroots) p = 0.3
+
 
 
 plot(SRL_EcotypeBl_model)
-# log residuals are at slight angle -- maybe this is causing issues 
 
 
 anova(SRL_EcotypeBl_model, type = "III") # not perfectly normal 
-#        Sum Sq  Mean Sq NumDF DenDF F value Pr(>F)
-#Ecotype 0.044672 0.044672     1    46  0.2875 0.5944
-
 
 emmeans(SRL_EcotypeBl_model, pairwise~Ecotype)
-# $contrasts
- #contrast         estimate    SE df t.ratio p.value
- #Lowland - Upland  -0.0543 0.101 43 -0.536  0.5946 
 
 
 ```
-#### Volume-weighted SRL correlated with SMC or NO3? 
-```{r}
-# SMC
-reg_SRL_SMC<-lm(log(SRL_giaroots)~SMC_perc_GravWaterCont_OutlierRmv, data=metadata)
 
-#Look at the residuals to make sure they are normal
-hist(stdres(reg_SRL_SMC))
-qqPlot(stdres(reg_SRL_SMC))
-#It mostly falls within the confidence intervals so I think it is normal!
-
-#you can also use Box Cox to determine what transformation you should use
-boxCox(reg_SRL_SMC)
-#Since the confidence interval isn't within 1 - need to transform, log is better
-
-summary(reg_SRL_SMC) #this will give you the statistics for the regression
-#esidual standard error: 0.4037 on 185 degrees of freedom
-#  (5 observations deleted due to missingness)
-#Multiple R-squared:  0.0312,	Adjusted R-squared:  0.02596 
-#F-statistic: 5.958 on 1 and 185 DF,  p-value: 0.01559
-
-#Run the next 2 lines together to plot the results
-plot(metadata$SRL_giaroots_OutlierRmv,metadata$SMC_perc_GravWaterCont_OutlierRmv) 
-abline(reg_SRL_SMC)
-
-
-
-# NO3
-reg_SRL_NO3<-lm(NO3_ugN_g_drysoil_K2SO4~SRL_giaroots_OutlierRmv, data=metadata)
-reg_SRL_NO32<-lm(NO3_ugperG.T0~SRL_giaroots_OutlierRmv, data=metadata)
-
-
-#Look at the residuals to make sure they are normal
-hist(stdres(reg_SRL_NO32))
-qqPlot(stdres(reg_SRL_NO3))
-#It mostly falls within the confidence intervals so I think it is normal!
-
-#you can also use Box Cox to determine what transformation you should use
-boxCox(reg_SRL_NO3)
-
-summary(reg_SRL_NO3) #this will give you the statistics for the regression
-# NO3_K2SO4
-#Residual standard error: 0.3282 on 139 degrees of freedom
- # (3 observations deleted due to missingness)
-#Multiple R-squared:  0.06524,	Adjusted R-squared:  0.05851 
-#F-statistic: 9.701 on 1 and 139 DF,  p-value: 0.002238
-
-summary(reg_SRL_NO32) #this will give you the statistics for the regression
-# Residual standard error: 0.7473 on 139 degrees of freedom
- # (3 observations deleted due to missingness)
-#Multiple R-squared:  0.0009668,	Adjusted R-squared:  -0.006221 
-#F-statistic: 0.1345 on 1 and 139 DF,  p-value: 0.7144
-
-# PLOT
-plot(metadata$NO3_ugN_g_drysoil_K2SO4,metadata$SRL_giaroots_OutlierRmv) 
-abline(reg_SRL_NO3)
-
-
-
-
-```
 ## Mass-weighted SRL   
 ```{r}
 # summarize
@@ -5993,11 +4606,6 @@ isSingular(SRL_VarietyBl_model) # TRUE
 # Look at variance - is block 0? 
 library(lme4)
 VarCorr(SRL_VarietyBl_model)
-#Groups        Name        Std.Dev.
-# Variety:Block (Intercept) 0.1062  
-# Block         (Intercept) 0.0000  
-# Residual                  0.6177
-
 
 
 plot(SRL_VarietyBl_model)
@@ -6005,30 +4613,23 @@ plot(SRL_VarietyBl_model)
 # shapiro test
 res = resid(SRL_VarietyBl_model)
 shapiro.test(res) 
-#log(SRL), p = 0.2
+
 
 
 # homoegeneity of variances
 bartlett.test(SRL_log ~ Variety, data = metadata) 
-#SRL_log, p = 0.1
+
 
 # Should SMC be included to improve model fit?
-
 SRL_VarietyBl_model <- lmer(log(SRL) ~ Variety + (1|Block/Variety), data = metadata)
 
 SRL_VarietyBl_model_SMC <- lmer(log(SRL) ~ Variety + SMC_perc_GravWaterCont_OutlierRmv + (1|Block/Variety), data = metadata)
 
 # AIC check with SMC
 AIC(SRL_VarietyBl_model_SMC, SRL_VarietyBl_model)
-# df      AIC
-#SRL_VarietyBl_model_SMC 16 313.0181 # NO 
-#SRL_VarietyBl_model     15 310.2930
-
+	 # not lower with SMC
 
 anova(SRL_VarietyBl_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
- #       Sum Sq Mean Sq NumDF  DenDF F value Pr(>F)
-#Variety 6.7905 0.61732    11 36.033  1.6179 0.1353
   
 
 ############### By Ecotype 
@@ -6037,14 +4638,10 @@ SRL_EcotypeBl_model <- lmer(log(SRL) ~ Ecotype + (1|Block/Plot), data = metadata
 plot(SRL_EcotypeBl_model)
 res = resid(SRL_EcotypeBl_model)
 shapiro.test(res)
-# p = 0.4
+
 
 
 anova(SRL_EcotypeBl_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#         Sum Sq Mean Sq NumDF  DenDF F value Pr(>F)
-#Ecotype 0.92581 0.92581     1 46.055  2.4279  0.126
-
 
 ```
 
@@ -6072,31 +4669,22 @@ plot(BGdry_VarietyBl_model)
 
 res = resid(BGdry_VarietyBl_model)
 shapiro.test(res) 
-#log(DryRootWt_total_g), p <0.001
-#sqrt - p = 0.69
 
 # homoegeneity of variances
 bartlett.test(sqrt(DryRootWt_total_g) ~ Variety, data = metadata) 
-#DryRootWt_total_g, p <0.001 
-# sqrt p <0.01
+
 
 # Should SMC be included to improve model fit?
-
 BGdry_VarietyBl_model <- lmer(sqrt(DryRootWt_total_g) ~ Variety + (1|Block/Variety), data = metadata)
 
 BGdry_VarietyBl_model_SMC <- lmer(sqrt(DryRootWt_total_g) ~ Variety + SMC_perc_GravWaterCont_OutlierRmv + (1|Block/Variety), data = metadata)
 
 # AIC check with SMC
 AIC(BGdry_VarietyBl_model, BGdry_VarietyBl_model_SMC)
-# df      AIC
-#BGdry_VarietyBl_model     15 27.58935
-#BGdry_VarietyBl_model_SMC 16 37.53703 # NO 
-
+	# not lower with SMC
 
 anova(BGdry_VarietyBl_model, type = "III")
-# Type III Analysis of Variance Table with Satterthwaite's method
-#         Sum Sq  Mean Sq NumDF DenDF F value Pr(>F)
-#Variety 0.79601 0.072365    11    36  1.6071 0.1385
+
 
 ################ ecotype
 
@@ -6106,17 +4694,11 @@ plot(BGdry_EcoBl_model)
 
 res = resid(BGdry_EcoBl_model)
 shapiro.test(res) 
-# sqrt p =0.012
 
 # homoegeneity of variances
 bartlett.test(sqrt(DryRootWt_total_g) ~ Ecotype, data = metadata) 
-#sqrt p = 0.8
-
 
 anova(BGdry_EcoBl_model, type = "III")
- # Type III Analysis of Variance Table with Satterthwaite's method
-#         Sum Sq Mean Sq NumDF DenDF F value Pr(>F)
-#Ecotype 0.11115 0.11115     1    46  2.4685  0.123
 
 
 ```
@@ -6141,12 +4723,10 @@ plot(rootdiam_VarietyBl_model)
 
 res = resid(rootdiam_VarietyBl_model)
 shapiro.test(res) 
-# p = 0.9
-
 
 # homoegeneity of variances
 bartlett.test(Avg_root_width_diam ~ Variety, data = metadata) 
-# p <0.07 
+
 
 # Should SMC be included to improve model fit?
 
@@ -6156,16 +4736,12 @@ rootdiam_VarietyBl_model_SMC <- lmer(Avg_root_width_diam ~ Variety + SMC_perc_Gr
 
 # AIC check with SMC
 AIC(rootdiam_VarietyBl_model, rootdiam_VarietyBl_model_SMC)
-#   df       AIC
-#rootdiam_VarietyBl_model     15 -923.9182
-#rootdiam_VarietyBl_model_SMC 16 -890.7907 #NO
+	# not lower with SMC
 
 anova(rootdiam_VarietyBl_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#           Sum Sq    Mean Sq NumDF DenDF F value    Pr(>F)    
-#Variety 0.0016101 0.00014637    11    36  4.4326 0.0003226 ***
 
-# tukeys comparison will give letter differentiation
+
+# p-adjust with significant letters
 library(multcomp)
 library(lsmeans)
 marginal = lsmeans(rootdiam_VarietyBl_model,
@@ -6176,44 +4752,19 @@ CLD = cld(marginal,
           adjust="FDR")         ###  Tukey-adjusted comparisons
 CLD
 
-# Variety      lsmean      SE   df lower.CL upper.CL .group
-# Kanlow       0.0333 0.00144 21.9   0.0287   0.0379  a    
-# NE28         0.0337 0.00179 52.0   0.0283   0.0390  ab   
-# Trailblazer  0.0364 0.00179 52.0   0.0310   0.0418  abc  
-# Southlow     0.0367 0.00144 21.9   0.0321   0.0413  abc  
-# Shelter      0.0393 0.00179 52.0   0.0340   0.0447   bcd 
-# EG1102       0.0398 0.00179 52.0   0.0344   0.0452   bcd 
-# Dacotah      0.0400 0.00179 52.0   0.0346   0.0453   bcd 
-# Blackwell    0.0403 0.00179 52.0   0.0349   0.0457    cd 
-# Alamo        0.0405 0.00144 21.9   0.0359   0.0451    cd 
-#EG1101       0.0435 0.00179 52.0   0.0382   0.0489     d 
-# Cave-in-Rock 0.0440 0.00144 21.9   0.0394   0.0486     d 
-# EG2101       0.0441 0.00179 52.0   0.0387   0.0494     d 
-
-#Degrees-of-freedom method: kenward-roger 
-#Confidence level used: 0.95 
-#Conf-level adjustment: bonferroni method for 12 estimates 
-#P value adjustment: fdr method for 66 tests 
-#significance level used: alpha = 0.05  
-
 
 ### BY Ecotype? 
 rootdiam_EcotypeBl_model <- lmer(Avg_root_width_diam ~ Ecotype + (1|Block/Plot), data = metadata)
 #boundary (singular) fit: see ?isSingular
 res = resid(rootdiam_EcotypeBl_model)
 shapiro.test(res) 
-# p = 0.95
 
 plot(rootdiam_EcotypeBl_model)
 
 # homoegeneity of variances
 bartlett.test(Avg_root_width_diam ~ Ecotype, data = metadata) 
-# p =0.5
 
 anova(rootdiam_EcotypeBl_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#            Sum Sq    Mean Sq NumDF DenDF F value Pr(>F)
-#Ecotype 2.1529e-09 2.1529e-09     1    46   1e-04 0.99367
 
 #######################
 # Does root diameter correlate with soil moisture content
@@ -6222,16 +4773,6 @@ ggqqplot(metadata$SMC_perc_GravWaterCont_OutlierRmv)
 
 
 cor.test(metadata$SMC_perc_GravWaterCont_OutlierRmv, metadata$Avg_root_width_diam, method = "pearson")
-
-#data:  metadata$SMC_perc_GravWaterCont_OutlierRmv and metadata$Avg_root_width_diam
-#t = -2.2161, df = 140, p-value = 0.0283
-#alternative hypothesis: true correlation is not equal to 0
-#95 percent confidence interval:
-# -0.33855297 -0.01997065
-#sample estimates:
-#       cor 
-#-0.1840923 
-
 
 
 ```
@@ -6252,16 +4793,12 @@ require(lmerTest)
 rootlength_VarietyBl_model <- lmer(sqrt(Network_length) ~ Variety + (1|Block/Variety), data = metadata)
 res = resid(rootlength_VarietyBl_model)
 shapiro.test(res) 
-# p = <0.001
-# log(length), p = 0.04 
-# sqrt(length),  p = 0.6
 
 plot(rootlength_VarietyBl_model)
 
 # homoegeneity of variances
 bartlett.test(sqrt(Network_length) ~ Variety, data = metadata) 
-#log -  p = 0.02 
-# sqrt - p <0.001
+
 
 #####
 # Should SMC be included to improve model fit?
@@ -6272,18 +4809,9 @@ rootlength_VarietyBl_model_SMC <- lmer(sqrt(Network_length) ~ Variety + SMC_perc
 
 # AIC check with SMC
 AIC(rootlength_VarietyBl_model, rootlength_VarietyBl_model_SMC)
-#         df     AIC
-#rootlength_VarietyBl_model     15 836.643
-#rootlength_VarietyBl_model_SMC 16 827.529 # YES 
+ # lower with SMC
 
 anova(rootlength_VarietyBl_model_SMC, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#                                 Sum Sq Mean Sq NumDF  DenDF F value Pr(>F)
-#Variety                       277.501  25.227    11 34.518  1.2158 0.3137
-#SMC_perc_GravWaterCont         15.113  15.113     1 47.173  0.7283 0.3977
-
-
-
 
 
 ### BY Ecotype? 
@@ -6291,42 +4819,15 @@ length_EcotypeBl_model <- lmer(sqrt(Network_length) ~ Ecotype +SMC_perc_GravWate
 #boundary (singular) fit: see ?isSingular
 res = resid(length_EcotypeBl_model)
 shapiro.test(res) 
-# p = 0.06
+
 
 plot(length_EcotypeBl_model)
 
 # homoegeneity of variances
 bartlett.test(sqrt(Network_length) ~ Ecotype, data = metadata) 
-# p =0.7
-
 
 
 anova(length_EcotypeBl_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#                            Sum Sq Mean Sq NumDF  DenDF F value  Pr(>F)  
-#Ecotype                     66.892  66.892     1 46.891  3.2315 0.07867 .
-#SMC_perc_GravWaterCont 20.616  20.616     1 61.639  0.9959 0.32220 
-
-
-######################################
-### CORRELATE ROOT LENGTH WITH SMC 
-
-reg_rootlength_SMC<-lm(sqrt(Network_length)~SMC_perc_GravWaterCont_OutlierRmv, data=metadata)
-
-#Look at the residuals to make sure they are normal
-hist(stdres(reg_rootlength_SMC))
-qqPlot(stdres(reg_rootlength_SMC))
-
-summary(reg_rootlength_SMC) #this will give you the statistics for the regression
-#Residual standard error: 4.645 on 140 degrees of freedom
-#  (2 observations deleted due to missingness)
-#Multiple R-squared:  0.001674,	Adjusted R-squared:  -0.005457 
-#F-statistic: 0.2348 on 1 and 140 DF,  p-value: 0.6288
-
-# PLOT 
-plot(metadata$SRL_giaroots,metadata$SRL) 
-abline(reg_SRL_SRLgia)
-
 
 ```
 
@@ -6337,7 +4838,6 @@ abline(reg_SRL_SRLgia)
 ggqqplot(metadata$Network_volume) # great
 hist(metadata$Network_volume) # right skew
 
-
 ## ANALYSIS
 
 require(lme4)
@@ -6346,12 +4846,9 @@ require(lmerTest)
 vol_VarietyBl_model <- lmer(sqrt(Network_volume) ~ Variety + (1|Block/Variety), data = metadata)
 res = resid(vol_VarietyBl_model)
 shapiro.test(res) 
-# p = <00.001
-# sqrt p = 0.6
 
 # homoegeneity of variances
 bartlett.test(sqrt(Network_volume) ~ Variety, data = metadata) 
-# sqrt - p= 0.7
 
 #####
 # Should SMC be included to improve model fit?
@@ -6362,35 +4859,20 @@ rootvol_VarietyBl_model_SMC <- lmer(sqrt(Network_volume) ~ Variety + SMC_perc_Gr
 
 # AIC check with SMC
 AIC(rootvol_VarietyBl_model, rootvol_VarietyBl_model_SMC)
-# df      AIC
-#rootvol_VarietyBl_model     15 126.0228 
-#rootvol_VarietyBl_model_SMC 16 133.7509 #NO 
-
+	# not lower with SMC	
 
 anova(vol_VarietyBl_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
- #       Sum Sq Mean Sq NumDF  DenDF F value  Pr(>F)  
-#Variety 2.0636  0.1876    11 36.001  1.9964 0.05854 .
-
 
 ### BY Ecotype? 
 Nvol_EcotypeBl_model <- lmer(sqrt(Network_volume) ~ Ecotype + (1|Block/Plot), data = metadata)
 res = resid(Nvol_EcotypeBl_model)
 shapiro.test(res) 
-# p = 0.5
 
 plot(Nvol_EcotypeBl_model)
 
 # homoegeneity of variances
 bartlett.test(sqrt(Network_volume) ~ Ecotype, data = metadata) 
-# p =0.95
-
-
 
 anova(Nvol_EcotypeBl_model, type = "III")
-#Type III Analysis of Variance Table with Satterthwaite's method
-#         Sum Sq Mean Sq NumDF DenDF F value Pr(>F)
-#Ecotype 0.14023 0.14023     1    46  1.4923 0.2281
-
 
 ```
