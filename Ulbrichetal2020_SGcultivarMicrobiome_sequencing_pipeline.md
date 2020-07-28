@@ -3,6 +3,12 @@ title: "SGcultivar sequencing pipeline"
 author: "Tayler Ulbrich & Lukas Bell-Dereske
 date: "7/6/2020"
 ---
+*Final output from this sequencing pipeline found in "Final_otu_tax_tree_files" folder*
+- Bacterial OTU table: "TMC_SGVar16S_RhizoEndo_combined_merged_ALLruns_OTU_table"
+- Bacterial Taxonomy File (filtered to 80% confidence): "TMC_SGVar16S_RhizoEndo_combined_merged_ALLruns_otus_taxonomy_SilvaV123_sintax_80perc_editted"
+- Bacterial Phylogenetic Tree File: "2018.06.22_SGvarietyRhizoEndo16s_pasta.nwk"
+- Fungal OTU table: "TMC_SGVariety_ITS_OTU97_uniques_maxee_1_cutadapt_diff5_maxee1_R2trunc50_merged"
+- Fungal Taxonomy File (filtered to 80% confidence): "TMC_SGVariety_ITS_80percTaxonomy_unite7.2_editted"
 
 # Bacterial Sequencing Pipeline (primers 515f/806r)
 
